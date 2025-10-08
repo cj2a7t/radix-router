@@ -7,7 +7,6 @@ description = "A high-performance radix tree based HTTP router for Rust"
 license = "Apache-2.0"
 repository = "https://github.com/cj2a7t/routerix"
 keywords = ["router", "radix", "api-gateway"]
-categories = ["radix", "api-gateway"]
 
 [dependencies]
 libc = "0.2"
