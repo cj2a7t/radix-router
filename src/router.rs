@@ -2,56 +2,38 @@
 
 use crate::ffi::RadixTreeRaw;
 use crate::route::*;
-use lru::LruCache;
+use anyhow::{Context, Result};
 use regex::Regex;
 use std::collections::HashMap;
-use std::num::NonZeroUsize;
+use std::sync::RwLock;
 
-/// Router configuration options
-#[derive(Debug, Clone)]
-pub struct RouterOpts {
-    /// Disable parameter matching
-    pub no_param_match: bool,
-    /// Disable path cache optimization
-    pub disable_path_cache: bool,
-}
-
-impl Default for RouterOpts {
-    fn default() -> Self {
-        Self {
-            no_param_match: false,
-            disable_path_cache: false,
-        }
-    }
-}
-
-/// High-performance radix tree based router
+/// High-performance radix tree based router (optimized for concurrent reads)
+///
+/// This router is designed for optimal read performance:
+/// - After initialization, all route data is immutable
+/// - `match_route()` requires only `&self` and uses temporary iterators for lock-free queries
+/// - Each query creates its own iterator, making it fully thread-safe and async-safe
+/// - Regex patterns are pre-compiled during route registration (zero runtime compilation)
+/// - Multiple threads/tasks can call `match_route()` concurrently without contention
 pub struct RadixRouter {
-    /// C-based radix tree
-    tree: RadixTreeRaw,
-    /// Route storage: index -> Vec<RouteOpts>
+    /// C-based radix tree (RwLock only for insert/remove operations)
+    tree: RwLock<RadixTreeRaw>,
+    /// Route storage: index -> Vec<RouteOpts> (immutable after construction)
     match_data: HashMap<usize, Vec<RouteOpts>>,
     /// Current maximum index
     match_data_index: usize,
-    /// Hash-based exact path matching: path -> Vec<RouteOpts>
+    /// Hash-based exact path matching: path -> Vec<RouteOpts> (immutable after construction)
     hash_path: HashMap<String, Vec<RouteOpts>>,
-    /// Pattern cache for parameter extraction
-    pattern_cache: LruCache<String, (Regex, Vec<String>)>,
-    /// Router options
-    opts: RouterOpts,
 }
 
 impl RadixRouter {
     /// Create a new router with routes
-    pub fn new(routes: Vec<Route>, opts: Option<RouterOpts>) -> Result<Self, String> {
-        let opts = opts.unwrap_or_default();
+    pub fn new(routes: Vec<Route>) -> Result<Self> {
         let mut router = Self {
-            tree: RadixTreeRaw::new(),
+            tree: RwLock::new(RadixTreeRaw::new().context("Failed to create radix tree")?),
             match_data: HashMap::new(),
             match_data_index: 0,
             hash_path: HashMap::new(),
-            pattern_cache: LruCache::new(NonZeroUsize::new(1000).unwrap()),
-            opts,
         };
 
         // Register all routes
@@ -63,7 +45,7 @@ impl RadixRouter {
     }
 
     /// Add a single route to the router
-    pub fn add_route(&mut self, route: Route) -> Result<(), String> {
+    pub fn add_route(&mut self, route: Route) -> Result<()> {
         for path in &route.paths {
             self.insert_route(path, &route)?;
         }
@@ -71,12 +53,12 @@ impl RadixRouter {
     }
 
     /// Insert a route with specific path
-    fn insert_route(&mut self, path: &str, route: &Route) -> Result<(), String> {
+    fn insert_route(&mut self, path: &str, route: &Route) -> Result<()> {
         // Process route data
         let route_opts = self.process_route(path, route)?;
 
-        // Optimization: use hash map for exact path matching
-        if !self.opts.disable_path_cache && route_opts.path_op == PathOp::Equal {
+        // Optimization: use hash map for exact path matching (always enabled)
+        if route_opts.path_op == PathOp::Equal {
             let routes = self.hash_path.entry(route_opts.path.clone()).or_default();
             routes.push(route_opts);
             routes.sort_by(|a, b| a.cmp_priority(b));
@@ -84,7 +66,12 @@ impl RadixRouter {
         }
 
         // Check if path already exists in radix tree
-        if let Some(idx) = self.tree.find(route_opts.path.as_bytes()) {
+        if let Some(idx) = self
+            .tree
+            .read()
+            .map_err(|e| anyhow::anyhow!("RwLock poisoned: {}", e))?
+            .find(route_opts.path.as_bytes())
+        {
             // Path exists, add to existing route array
             if let Some(routes) = self.match_data.get_mut(&idx) {
                 routes.push(route_opts);
@@ -100,15 +87,20 @@ impl RadixRouter {
         self.match_data.insert(idx, vec![route_opts.clone()]);
 
         // Insert into radix tree
-        if !self.tree.insert(route_opts.path.as_bytes(), idx as i32) {
-            return Err(format!("Failed to insert path: {}", route_opts.path));
+        if !self
+            .tree
+            .write()
+            .map_err(|e| anyhow::anyhow!("RwLock poisoned: {}", e))?
+            .insert(route_opts.path.as_bytes(), idx as i32)
+        {
+            anyhow::bail!("Failed to insert path: {}", route_opts.path);
         }
 
         Ok(())
     }
 
     /// Process route data
-    fn process_route(&self, path: &str, route: &Route) -> Result<RouteOpts, String> {
+    fn process_route(&self, path: &str, route: &Route) -> Result<RouteOpts> {
         // Process HTTP methods
         let methods = route.methods.unwrap_or(HttpMethod::empty());
 
@@ -120,6 +112,14 @@ impl RadixRouter {
 
         // Process path (extract parameters)
         let (actual_path, path_op, has_param) = self.parse_path(path);
+
+        // Pre-compile regex pattern if path has parameters
+        let compiled_pattern = if has_param {
+            let (pattern, names) = self.generate_pattern(path)?;
+            Some(std::sync::Arc::new((pattern, names)))
+        } else {
+            None
+        };
 
         // Clone filter function if present
         let filter_fn = if let Some(ref f) = route.filter_fn {
@@ -140,17 +140,16 @@ impl RadixRouter {
             filter_fn,
             priority: route.priority,
             metadata: route.metadata.clone(),
+            compiled_pattern,
         })
     }
 
     /// Parse path and extract parameter information
     fn parse_path(&self, path: &str) -> (String, PathOp, bool) {
         // Check for parameter :param
-        if !self.opts.no_param_match {
-            if let Some(pos) = path.find(':') {
-                let actual_path = &path[..pos];
-                return (actual_path.to_string(), PathOp::PrefixMatch, true);
-            }
+        if let Some(pos) = path.find(':') {
+            let actual_path = &path[..pos];
+            return (actual_path.to_string(), PathOp::PrefixMatch, true);
         }
 
         // Check for wildcard *
@@ -164,62 +163,82 @@ impl RadixRouter {
         (path.to_string(), PathOp::Equal, false)
     }
 
-    /// Match a route
-    pub fn match_route(&mut self, path: &str, opts: &mut MatchOpts) -> Option<&serde_json::Value> {
-        // Clear previous match results
-        if let Some(matched) = &mut opts.matched {
-            matched.clear();
-        }
+    /// Match a route (thread-safe, immutable)
+    ///
+    /// Returns:
+    /// - `Ok(Some(MatchResult))` - Found a matching route
+    /// - `Ok(None)` - No matching route found
+    /// - `Err(_)` - System error (e.g., RwLock poisoned)
+    pub fn match_route(&self, path: &str, opts: &MatchOpts) -> Result<Option<MatchResult>> {
+        // Normalize host to lowercase if present
+        let normalized_opts = if let Some(host) = &opts.host {
+            let mut new_opts = opts.clone();
+            new_opts.host = Some(host.to_lowercase());
+            new_opts
+        } else {
+            opts.clone()
+        };
 
-        // Lowercase host for matching
-        if let Some(host) = &opts.host {
-            opts.host = Some(host.to_lowercase());
-        }
+        // Storage for matched parameters
+        let mut matched = HashMap::new();
 
-        // Priority 1: Check hash_path for exact match
-        if let Some(routes) = self.hash_path.get(path).cloned() {
-            for (i, route) in routes.iter().enumerate() {
-                if self.match_route_opts(route, path, opts) {
-                    if let Some(matched) = &mut opts.matched {
-                        matched.insert("_path".to_string(), path.to_string());
-                    }
-                    return self
-                        .hash_path
-                        .get(path)
-                        .and_then(|r| r.get(i))
-                        .map(|r| &r.metadata);
+        // Priority 1: Check hash_path for exact match (lock-free read)
+        if let Some(routes) = self.hash_path.get(path) {
+            for route in routes.iter() {
+                if self.match_route_opts(route, path, &normalized_opts, &mut matched) {
+                    matched.insert("_path".to_string(), path.to_string());
+                    return Ok(Some(MatchResult {
+                        metadata: route.metadata.clone(),
+                        matched,
+                    }));
                 }
+                matched.clear(); // Clear for next iteration
             }
         }
 
         // Priority 2: Use radix tree for prefix matching
-        if !self.tree.search(path.as_bytes()) {
-            return None;
+        // Create a temporary iterator for this query (thread-safe and async-safe)
+        let tree_guard = self
+            .tree
+            .read()
+            .map_err(|e| anyhow::anyhow!("Failed to acquire read lock on radix tree: {}", e))?;
+
+        let mut iterator = tree_guard
+            .new_iterator()
+            .context("Failed to create radix tree iterator")?;
+
+        // Search for matching prefixes
+        if !iterator.search(tree_guard.tree_ptr(), path.as_bytes()) {
+            return Ok(None);
         }
 
-        // Iterate through matching routes
-        while let Some(idx) = self.tree.tree_up(path.as_bytes()) {
-            if let Some(routes) = self.match_data.get(&idx).cloned() {
-                for (i, route) in routes.iter().enumerate() {
-                    if self.match_route_opts(route, path, opts) {
-                        if let Some(matched) = &mut opts.matched {
-                            matched.insert("_path".to_string(), route.path_org.clone());
-                        }
-                        return self
-                            .match_data
-                            .get(&idx)
-                            .and_then(|r| r.get(i))
-                            .map(|r| &r.metadata);
+        // Iterate through matching routes (lock-free read from match_data)
+        while let Some(idx) = iterator.tree_up(path.as_bytes()) {
+            if let Some(routes) = self.match_data.get(&idx) {
+                for route in routes.iter() {
+                    if self.match_route_opts(route, path, &normalized_opts, &mut matched) {
+                        matched.insert("_path".to_string(), route.path_org.clone());
+                        return Ok(Some(MatchResult {
+                            metadata: route.metadata.clone(),
+                            matched,
+                        }));
                     }
+                    matched.clear(); // Clear for next iteration
                 }
             }
         }
 
-        None
+        Ok(None)
     }
 
     /// Match route options
-    fn match_route_opts(&mut self, route: &RouteOpts, path: &str, opts: &mut MatchOpts) -> bool {
+    fn match_route_opts(
+        &self,
+        route: &RouteOpts,
+        path: &str,
+        opts: &MatchOpts,
+        matched: &mut HashMap<String, String>,
+    ) -> bool {
         // 1. HTTP method matching
         if !route.methods.is_empty() {
             if let Some(method) = &opts.method {
@@ -233,10 +252,8 @@ impl RadixRouter {
             }
         }
 
-        if let Some(matched) = &mut opts.matched {
-            if let Some(method) = &opts.method {
-                matched.insert("_method".to_string(), method.clone());
-            }
+        if let Some(method) = &opts.method {
+            matched.insert("_method".to_string(), method.clone());
         }
 
         // 2. Host matching
@@ -245,14 +262,12 @@ impl RadixRouter {
             if let Some(host) = &opts.host {
                 for pattern in hosts {
                     if pattern.matches(host) {
-                        if let Some(m) = &mut opts.matched {
-                            let host_value = if pattern.is_wildcard {
-                                format!("*{}", pattern.pattern)
-                            } else {
-                                host.clone()
-                            };
-                            m.insert("_host".to_string(), host_value);
-                        }
+                        let host_value = if pattern.is_wildcard {
+                            format!("*{}", pattern.pattern)
+                        } else {
+                            host.clone()
+                        };
+                        matched.insert("_host".to_string(), host_value);
                         matched_host = true;
                         break;
                     }
@@ -265,7 +280,7 @@ impl RadixRouter {
         }
 
         // 3. Parameter matching
-        if !self.compare_param(path, route, opts) {
+        if !self.compare_param(path, route, matched) {
             return false;
         }
 
@@ -294,25 +309,23 @@ impl RadixRouter {
     }
 
     /// Extract parameters from path
-    fn compare_param(&mut self, req_path: &str, route: &RouteOpts, opts: &mut MatchOpts) -> bool {
-        // If matched is not requested and no params, just check path prefix
-        if opts.matched.is_none() && !route.has_param {
-            return true;
-        }
-
+    fn compare_param(
+        &self,
+        req_path: &str,
+        route: &RouteOpts,
+        matched: &mut HashMap<String, String>,
+    ) -> bool {
         if !route.has_param {
             return true;
         }
 
-        // Get or generate pattern
-        let (pattern, names) = match self.pattern_cache.get(&route.path_org) {
-            Some(cached) => cached.clone(),
-            None => {
-                let (pat, names) = self.generate_pattern(&route.path_org);
-                self.pattern_cache
-                    .put(route.path_org.clone(), (pat.clone(), names.clone()));
-                (pat, names)
+        // Use pre-compiled pattern (no cache lookup needed!)
+        let (pattern, names) = match &route.compiled_pattern {
+            Some(compiled) => {
+                let arc_ref = compiled.as_ref();
+                (&arc_ref.0, &arc_ref.1)
             }
+            None => return true, // No pattern means no parameters to extract
         };
 
         if names.is_empty() {
@@ -327,11 +340,9 @@ impl RadixRouter {
             }
 
             // Extract parameters
-            if let Some(matched) = &mut opts.matched {
-                for (i, name) in names.iter().enumerate() {
-                    if let Some(cap) = captures.get(i + 1) {
-                        matched.insert(name.clone(), cap.as_str().to_string());
-                    }
+            for (i, name) in names.iter().enumerate() {
+                if let Some(cap) = captures.get(i + 1) {
+                    matched.insert(name.clone(), cap.as_str().to_string());
                 }
             }
 
@@ -342,7 +353,7 @@ impl RadixRouter {
     }
 
     /// Generate regex pattern for path with parameters
-    fn generate_pattern(&self, path: &str) -> (Regex, Vec<String>) {
+    fn generate_pattern(&self, path: &str) -> Result<(Regex, Vec<String>)> {
         let mut names = Vec::new();
         let parts: Vec<&str> = path.split('/').collect();
         let mut pattern_parts = Vec::new();
@@ -372,13 +383,14 @@ impl RadixRouter {
         }
 
         let pattern_str = format!("^{}$", pattern_parts.join("/"));
-        let pattern = Regex::new(&pattern_str).expect("Invalid regex pattern");
+        let pattern = Regex::new(&pattern_str)
+            .with_context(|| format!("Failed to compile regex pattern for path: {}", path))?;
 
-        (pattern, names)
+        Ok((pattern, names))
     }
 
     /// Update an existing route
-    pub fn update_route(&mut self, old_route: Route, new_route: Route) -> Result<(), String> {
+    pub fn update_route(&mut self, old_route: Route, new_route: Route) -> Result<()> {
         // Remove old route
         self.delete_route(old_route)?;
         // Add new route
@@ -387,7 +399,7 @@ impl RadixRouter {
     }
 
     /// Delete a route
-    pub fn delete_route(&mut self, route: Route) -> Result<(), String> {
+    pub fn delete_route(&mut self, route: Route) -> Result<()> {
         for path in &route.paths {
             self.remove_route(path, &route)?;
         }
@@ -395,11 +407,11 @@ impl RadixRouter {
     }
 
     /// Remove a specific route from a path
-    fn remove_route(&mut self, path: &str, route: &Route) -> Result<(), String> {
+    fn remove_route(&mut self, path: &str, route: &Route) -> Result<()> {
         let route_opts = self.process_route(path, route)?;
 
-        // Check hash_path first
-        if !self.opts.disable_path_cache && route_opts.path_op == PathOp::Equal {
+        // Check hash_path first (for exact match routes)
+        if route_opts.path_op == PathOp::Equal {
             if let Some(routes) = self.hash_path.get_mut(&route_opts.path) {
                 routes.retain(|r| r.id != route_opts.id);
                 if routes.is_empty() {
@@ -407,24 +419,32 @@ impl RadixRouter {
                 }
                 return Ok(());
             }
-            return Err(format!("Route not found in hash_path: {}", route.id));
+            anyhow::bail!("Route not found in hash_path: {}", route.id);
         }
 
         // Find in radix tree
-        if let Some(idx) = self.tree.find(route_opts.path.as_bytes()) {
+        if let Some(idx) = self
+            .tree
+            .read()
+            .map_err(|e| anyhow::anyhow!("RwLock poisoned: {}", e))?
+            .find(route_opts.path.as_bytes())
+        {
             if let Some(routes) = self.match_data.get_mut(&idx) {
                 routes.retain(|r| r.id != route_opts.id);
 
                 if routes.is_empty() {
                     // Remove from tree if no routes left
                     self.match_data.remove(&idx);
-                    self.tree.remove(route_opts.path.as_bytes());
+                    self.tree
+                        .write()
+                        .map_err(|e| anyhow::anyhow!("RwLock poisoned: {}", e))?
+                        .remove(route_opts.path.as_bytes());
                 }
                 return Ok(());
             }
         }
 
-        Err(format!("Route not found: {}", route.id))
+        anyhow::bail!("Route not found: {}", route.id)
     }
 }
 
@@ -434,7 +454,6 @@ impl std::fmt::Debug for RadixRouter {
             .field("match_data_index", &self.match_data_index)
             .field("hash_path_count", &self.hash_path.len())
             .field("match_data_count", &self.match_data.len())
-            .field("opts", &self.opts)
             .finish()
     }
 }

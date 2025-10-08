@@ -1,7 +1,6 @@
 use radix_router::{HttpMethod, MatchOpts, RadixRouter, Route};
-use std::collections::HashMap;
 
-fn main() {
+fn main() -> anyhow::Result<()> {
     // Create routes
     let routes = vec![
         Route {
@@ -77,15 +76,14 @@ fn main() {
     ];
 
     // Create router
-    let mut router = RadixRouter::new(routes, None).expect("Failed to create router");
+    let router = RadixRouter::new(routes)?;
 
     println!("=== Radix Router Examples ===\n");
 
     // Example 1: Exact path match
     {
-        let mut opts = MatchOpts {
+        let opts = MatchOpts {
             method: Some("GET".to_string()),
-            matched: Some(HashMap::new()),
             ..Default::default()
         };
 
@@ -93,10 +91,10 @@ fn main() {
         println!("   Path: /api/users");
         println!("   Method: GET");
 
-        if let Some(metadata) = router.match_route("/api/users", &mut opts) {
+        if let Some(result) = router.match_route("/api/users", &opts)? {
             println!("   ✓ Matched!");
-            println!("   Metadata: {}", serde_json::to_string_pretty(metadata).unwrap());
-            println!("   Matched params: {:?}", opts.matched);
+            println!("   Metadata: {}", serde_json::to_string_pretty(&result.metadata).unwrap());
+            println!("   Matched params: {:?}", result.matched);
         } else {
             println!("   ✗ No match");
         }
@@ -105,9 +103,8 @@ fn main() {
 
     // Example 2: Parameter extraction
     {
-        let mut opts = MatchOpts {
+        let opts = MatchOpts {
             method: Some("GET".to_string()),
-            matched: Some(HashMap::new()),
             ..Default::default()
         };
 
@@ -115,10 +112,10 @@ fn main() {
         println!("   Path: /api/user/12345");
         println!("   Method: GET");
 
-        if let Some(metadata) = router.match_route("/api/user/12345", &mut opts) {
+        if let Some(result) = router.match_route("/api/user/12345", &opts)? {
             println!("   ✓ Matched!");
-            println!("   Metadata: {}", serde_json::to_string_pretty(metadata).unwrap());
-            println!("   Matched params: {:?}", opts.matched);
+            println!("   Metadata: {}", serde_json::to_string_pretty(&result.metadata).unwrap());
+            println!("   Matched params: {:?}", result.matched);
         } else {
             println!("   ✗ No match");
         }
@@ -127,9 +124,8 @@ fn main() {
 
     // Example 3: Multiple parameters
     {
-        let mut opts = MatchOpts {
+        let opts = MatchOpts {
             method: Some("GET".to_string()),
-            matched: Some(HashMap::new()),
             ..Default::default()
         };
 
@@ -137,10 +133,10 @@ fn main() {
         println!("   Path: /api/user/12345/posts");
         println!("   Method: GET");
 
-        if let Some(metadata) = router.match_route("/api/user/12345/posts", &mut opts) {
+        if let Some(result) = router.match_route("/api/user/12345/posts", &opts)? {
             println!("   ✓ Matched!");
-            println!("   Metadata: {}", serde_json::to_string_pretty(metadata).unwrap());
-            println!("   Matched params: {:?}", opts.matched);
+            println!("   Metadata: {}", serde_json::to_string_pretty(&result.metadata).unwrap());
+            println!("   Matched params: {:?}", result.matched);
         } else {
             println!("   ✗ No match");
         }
@@ -149,9 +145,8 @@ fn main() {
 
     // Example 4: Wildcard matching
     {
-        let mut opts = MatchOpts {
+        let opts = MatchOpts {
             host: Some("admin.example.com".to_string()),
-            matched: Some(HashMap::new()),
             ..Default::default()
         };
 
@@ -159,10 +154,10 @@ fn main() {
         println!("   Path: /admin/dashboard/settings");
         println!("   Host: admin.example.com");
 
-        if let Some(metadata) = router.match_route("/admin/dashboard/settings", &mut opts) {
+        if let Some(result) = router.match_route("/admin/dashboard/settings", &opts)? {
             println!("   ✓ Matched!");
-            println!("   Metadata: {}", serde_json::to_string_pretty(metadata).unwrap());
-            println!("   Matched params: {:?}", opts.matched);
+            println!("   Metadata: {}", serde_json::to_string_pretty(&result.metadata).unwrap());
+            println!("   Matched params: {:?}", result.matched);
         } else {
             println!("   ✗ No match");
         }
@@ -171,9 +166,8 @@ fn main() {
 
     // Example 5: Wildcard host
     {
-        let mut opts = MatchOpts {
+        let opts = MatchOpts {
             host: Some("v1.api.example.com".to_string()),
-            matched: Some(HashMap::new()),
             ..Default::default()
         };
 
@@ -181,10 +175,10 @@ fn main() {
         println!("   Path: /api/health");
         println!("   Host: v1.api.example.com");
 
-        if let Some(metadata) = router.match_route("/api/health", &mut opts) {
+        if let Some(result) = router.match_route("/api/health", &opts)? {
             println!("   ✓ Matched!");
-            println!("   Metadata: {}", serde_json::to_string_pretty(metadata).unwrap());
-            println!("   Matched params: {:?}", opts.matched);
+            println!("   Metadata: {}", serde_json::to_string_pretty(&result.metadata).unwrap());
+            println!("   Matched params: {:?}", result.matched);
         } else {
             println!("   ✗ No match");
         }
@@ -193,9 +187,8 @@ fn main() {
 
     // Example 6: Method not allowed
     {
-        let mut opts = MatchOpts {
+        let opts = MatchOpts {
             method: Some("POST".to_string()),
-            matched: Some(HashMap::new()),
             ..Default::default()
         };
 
@@ -203,9 +196,9 @@ fn main() {
         println!("   Path: /api/users");
         println!("   Method: POST (route only allows GET)");
 
-        if let Some(metadata) = router.match_route("/api/users", &mut opts) {
+        if let Some(result) = router.match_route("/api/users", &opts)? {
             println!("   ✓ Matched!");
-            println!("   Metadata: {}", serde_json::to_string_pretty(metadata).unwrap());
+            println!("   Metadata: {}", serde_json::to_string_pretty(&result.metadata).unwrap());
         } else {
             println!("   ✗ No match (method not allowed)");
         }
@@ -214,9 +207,8 @@ fn main() {
 
     // Example 7: Multiple methods allowed
     {
-        let mut opts = MatchOpts {
+        let opts = MatchOpts {
             method: Some("PUT".to_string()),
-            matched: Some(HashMap::new()),
             ..Default::default()
         };
 
@@ -224,10 +216,10 @@ fn main() {
         println!("   Path: /api/user/12345");
         println!("   Method: PUT (route allows GET, PUT, DELETE)");
 
-        if let Some(metadata) = router.match_route("/api/user/12345", &mut opts) {
+        if let Some(result) = router.match_route("/api/user/12345", &opts)? {
             println!("   ✓ Matched!");
-            println!("   Metadata: {}", serde_json::to_string_pretty(metadata).unwrap());
-            println!("   Matched params: {:?}", opts.matched);
+            println!("   Metadata: {}", serde_json::to_string_pretty(&result.metadata).unwrap());
+            println!("   Matched params: {:?}", result.matched);
         } else {
             println!("   ✗ No match");
         }
@@ -236,5 +228,7 @@ fn main() {
 
     println!("=== Router Debug Info ===");
     println!("{:?}", router);
+    
+    Ok(())
 }
 

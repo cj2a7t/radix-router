@@ -1,5 +1,6 @@
 //! FFI bindings for the C radix tree implementation
 
+use anyhow::Result;
 use std::ffi::c_void;
 
 #[repr(C)]
@@ -28,25 +29,71 @@ extern "C" {
 /// Safe Rust wrapper around C radix tree
 pub struct RadixTreeRaw {
     tree: *mut c_void,
+}
+
+/// RAII wrapper for radix tree iterator
+pub struct RadixIterator {
     iterator: *mut c_void,
 }
 
+impl RadixIterator {
+    fn new(tree: *mut c_void) -> Option<Self> {
+        unsafe {
+            let iterator = radix_tree_new_it(tree);
+            if iterator.is_null() {
+                None
+            } else {
+                Some(Self { iterator })
+            }
+        }
+    }
+
+    pub fn search(&mut self, tree: *mut c_void, key: &[u8]) -> bool {
+        unsafe {
+            let result = radix_tree_search(tree, self.iterator, key.as_ptr(), key.len());
+            !result.is_null()
+        }
+    }
+
+    pub fn tree_up(&mut self, key: &[u8]) -> Option<usize> {
+        unsafe {
+            let idx = radix_tree_up(self.iterator, key.as_ptr(), key.len());
+            if idx > 0 {
+                Some(idx as usize)
+            } else {
+                None
+            }
+        }
+    }
+}
+
+impl Drop for RadixIterator {
+    fn drop(&mut self) {
+        unsafe {
+            if !self.iterator.is_null() {
+                radix_tree_stop(self.iterator);
+                libc::free(self.iterator);
+                self.iterator = std::ptr::null_mut();
+            }
+        }
+    }
+}
+
 impl RadixTreeRaw {
-    pub fn new() -> Self {
+    pub fn new() -> Result<Self> {
         unsafe {
             let tree = radix_tree_new();
             if tree.is_null() {
-                panic!("Failed to create radix tree");
+                anyhow::bail!("Failed to create radix tree: radix_tree_new returned null pointer");
             }
 
-            let iterator = radix_tree_new_it(tree);
-            if iterator.is_null() {
-                radix_tree_destroy(tree);
-                panic!("Failed to create radix tree iterator");
-            }
-
-            Self { tree, iterator }
+            Ok(Self { tree })
         }
+    }
+
+    /// Create a new iterator for this tree (for concurrent queries)
+    pub fn new_iterator(&self) -> Option<RadixIterator> {
+        RadixIterator::new(self.tree)
     }
 
     pub fn insert(&mut self, key: &[u8], idx: i32) -> bool {
@@ -64,37 +111,19 @@ impl RadixTreeRaw {
         }
     }
 
-    pub fn search(&mut self, key: &[u8]) -> bool {
-        unsafe {
-            let result = radix_tree_search(self.tree, self.iterator, key.as_ptr(), key.len());
-            !result.is_null()
-        }
-    }
-
-    pub fn tree_up(&mut self, key: &[u8]) -> Option<usize> {
-        unsafe {
-            let idx = radix_tree_up(self.iterator, key.as_ptr(), key.len());
-            if idx > 0 {
-                Some(idx as usize)
-            } else {
-                None
-            }
-        }
-    }
-
     pub fn remove(&mut self, key: &[u8]) -> bool {
         unsafe { radix_tree_remove(self.tree, key.as_ptr(), key.len()) == 1 }
+    }
+
+    // Internal: Get raw tree pointer for iterator operations
+    pub(crate) fn tree_ptr(&self) -> *mut c_void {
+        self.tree
     }
 }
 
 impl Drop for RadixTreeRaw {
     fn drop(&mut self) {
         unsafe {
-            if !self.iterator.is_null() {
-                radix_tree_stop(self.iterator);
-                libc::free(self.iterator);
-                self.iterator = std::ptr::null_mut();
-            }
             if !self.tree.is_null() {
                 radix_tree_destroy(self.tree);
                 self.tree = std::ptr::null_mut();
@@ -108,6 +137,6 @@ unsafe impl Sync for RadixTreeRaw {}
 
 impl Default for RadixTreeRaw {
     fn default() -> Self {
-        Self::new()
+        Self::new().expect("Failed to create default RadixTreeRaw")
     }
 }

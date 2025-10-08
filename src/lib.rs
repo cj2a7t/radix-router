@@ -18,6 +18,7 @@
 //! use radix_router::{RadixRouter, Route, HttpMethod, MatchOpts};
 //! use std::collections::HashMap;
 //!
+//! # fn main() -> anyhow::Result<()> {
 //! let routes = vec![
 //!     Route {
 //!         id: "1".to_string(),
@@ -43,22 +44,24 @@
 //!     },
 //! ];
 //!
-//! let mut router = RadixRouter::new(routes, None).unwrap();
+//! let router = RadixRouter::new(routes)?;
 //!
-//! let mut opts = MatchOpts {
+//! let opts = MatchOpts {
 //!     method: Some("GET".to_string()),
-//!     matched: Some(HashMap::new()),
 //!     ..Default::default()
 //! };
 //!
 //! // Match exact path
-//! let result = router.match_route("/api/users", &mut opts);
+//! let result = router.match_route("/api/users", &opts)?;
 //! assert!(result.is_some());
 //!
 //! // Match with parameter extraction
-//! let result = router.match_route("/api/user/123", &mut opts);
+//! let result = router.match_route("/api/user/123", &opts)?;
 //! assert!(result.is_some());
-//! assert_eq!(opts.matched.as_ref().unwrap().get("id").unwrap(), "123");
+//! let result = result.unwrap();
+//! assert_eq!(result.matched.get("id").unwrap(), "123");
+//! # Ok(())
+//! # }
 //! ```
 
 mod ffi;
@@ -66,8 +69,11 @@ mod route;
 mod router;
 
 // Re-export public types
-pub use route::{Expr, FilterFn, HostPattern, HttpMethod, MatchOpts, Route};
-pub use router::{RadixRouter, RouterOpts};
+pub use route::{Expr, FilterFn, HostPattern, HttpMethod, MatchOpts, MatchResult, Route};
+pub use router::RadixRouter;
+
+// Re-export anyhow types for convenience
+pub use anyhow::{Context, Result};
 
 #[cfg(test)]
 mod tests {
@@ -88,16 +94,17 @@ mod tests {
             metadata: serde_json::json!({"handler": "get_users"}),
         }];
 
-        let mut router = RadixRouter::new(routes, None).unwrap();
+        let router = RadixRouter::new(routes).unwrap();
 
-        let mut opts = MatchOpts {
+        let opts = MatchOpts {
             method: Some("GET".to_string()),
             ..Default::default()
         };
 
-        let result = router.match_route("/api/users", &mut opts);
+        let result = router.match_route("/api/users", &opts).unwrap();
         assert!(result.is_some());
-        assert_eq!(result.unwrap()["handler"], "get_users");
+        let result = result.unwrap();
+        assert_eq!(result.metadata["handler"], "get_users");
     }
 
     #[test]
@@ -114,14 +121,14 @@ mod tests {
             metadata: serde_json::json!({"handler": "get_users"}),
         }];
 
-        let mut router = RadixRouter::new(routes, None).unwrap();
+        let router = RadixRouter::new(routes).unwrap();
 
-        let mut opts = MatchOpts {
+        let opts = MatchOpts {
             method: Some("POST".to_string()),
             ..Default::default()
         };
 
-        let result = router.match_route("/api/users", &mut opts);
+        let result = router.match_route("/api/users", &opts).unwrap();
         assert!(result.is_none());
     }
 
@@ -139,19 +146,16 @@ mod tests {
             metadata: serde_json::json!({"handler": "user_post"}),
         }];
 
-        let mut router = RadixRouter::new(routes, None).unwrap();
+        let router = RadixRouter::new(routes).unwrap();
 
-        let mut opts = MatchOpts {
-            matched: Some(HashMap::new()),
-            ..Default::default()
-        };
+        let opts = MatchOpts::default();
 
-        let result = router.match_route("/user/123/post/456", &mut opts);
+        let result = router.match_route("/user/123/post/456", &opts).unwrap();
 
         assert!(result.is_some());
-        let matched = opts.matched.as_ref().unwrap();
-        assert_eq!(matched.get("id").unwrap(), "123");
-        assert_eq!(matched.get("pid").unwrap(), "456");
+        let result = result.unwrap();
+        assert_eq!(result.matched.get("id").unwrap(), "123");
+        assert_eq!(result.matched.get("pid").unwrap(), "456");
     }
 
     #[test]
@@ -168,18 +172,15 @@ mod tests {
             metadata: serde_json::json!({"handler": "serve_file"}),
         }];
 
-        let mut router = RadixRouter::new(routes, None).unwrap();
+        let router = RadixRouter::new(routes).unwrap();
 
-        let mut opts = MatchOpts {
-            matched: Some(HashMap::new()),
-            ..Default::default()
-        };
+        let opts = MatchOpts::default();
 
-        let result = router.match_route("/files/documents/readme.txt", &mut opts);
+        let result = router.match_route("/files/documents/readme.txt", &opts).unwrap();
 
         assert!(result.is_some());
-        let matched = opts.matched.as_ref().unwrap();
-        assert_eq!(matched.get("path").unwrap(), "documents/readme.txt");
+        let result = result.unwrap();
+        assert_eq!(result.matched.get("path").unwrap(), "documents/readme.txt");
     }
 
     #[test]
@@ -196,19 +197,22 @@ mod tests {
             metadata: serde_json::json!({"handler": "api"}),
         }];
 
-        let mut router = RadixRouter::new(routes, None).unwrap();
+        let router = RadixRouter::new(routes).unwrap();
 
-        let mut opts = MatchOpts {
+        let opts = MatchOpts {
             host: Some("api.example.com".to_string()),
             ..Default::default()
         };
 
-        let result = router.match_route("/api", &mut opts);
+        let result = router.match_route("/api", &opts).unwrap();
         assert!(result.is_some());
 
         // Test non-matching host
-        opts.host = Some("api.other.com".to_string());
-        let result = router.match_route("/api", &mut opts);
+        let opts = MatchOpts {
+            host: Some("api.other.com".to_string()),
+            ..Default::default()
+        };
+        let result = router.match_route("/api", &opts).unwrap();
         assert!(result.is_none());
     }
 
@@ -239,13 +243,14 @@ mod tests {
             },
         ];
 
-        let mut router = RadixRouter::new(routes, None).unwrap();
+        let router = RadixRouter::new(routes).unwrap();
 
-        let mut opts = MatchOpts::default();
-        let result = router.match_route("/api/users", &mut opts);
+        let opts = MatchOpts::default();
+        let result = router.match_route("/api/users", &opts).unwrap();
 
         assert!(result.is_some());
-        assert_eq!(result.unwrap()["handler"], "high");
+        let result = result.unwrap();
+        assert_eq!(result.metadata["handler"], "high");
     }
 
     #[test]
@@ -262,22 +267,28 @@ mod tests {
             metadata: serde_json::json!({"handler": "users"}),
         }];
 
-        let mut router = RadixRouter::new(routes, None).unwrap();
+        let router = RadixRouter::new(routes).unwrap();
 
         // Test GET
-        let mut opts = MatchOpts {
+        let opts = MatchOpts {
             method: Some("GET".to_string()),
             ..Default::default()
         };
-        assert!(router.match_route("/api/users", &mut opts).is_some());
+        assert!(router.match_route("/api/users", &opts).unwrap().is_some());
 
         // Test POST
-        opts.method = Some("POST".to_string());
-        assert!(router.match_route("/api/users", &mut opts).is_some());
+        let opts = MatchOpts {
+            method: Some("POST".to_string()),
+            ..Default::default()
+        };
+        assert!(router.match_route("/api/users", &opts).unwrap().is_some());
 
         // Test DELETE (not allowed)
-        opts.method = Some("DELETE".to_string());
-        assert!(router.match_route("/api/users", &mut opts).is_none());
+        let opts = MatchOpts {
+            method: Some("DELETE".to_string()),
+            ..Default::default()
+        };
+        assert!(router.match_route("/api/users", &opts).unwrap().is_none());
     }
 
     #[test]
@@ -296,23 +307,29 @@ mod tests {
             metadata: serde_json::json!({"handler": "users_v2"}),
         }];
 
-        let mut router = RadixRouter::new(routes, None).unwrap();
+        let router = RadixRouter::new(routes).unwrap();
 
         // Without version variable
-        let mut opts = MatchOpts::default();
-        assert!(router.match_route("/api/users", &mut opts).is_none());
+        let opts = MatchOpts::default();
+        assert!(router.match_route("/api/users", &opts).unwrap().is_none());
 
         // With correct version
         let mut vars = HashMap::new();
         vars.insert("version".to_string(), "v2".to_string());
-        opts.vars = Some(vars);
-        assert!(router.match_route("/api/users", &mut opts).is_some());
+        let opts = MatchOpts {
+            vars: Some(vars),
+            ..Default::default()
+        };
+        assert!(router.match_route("/api/users", &opts).unwrap().is_some());
 
         // With incorrect version
         let mut vars = HashMap::new();
         vars.insert("version".to_string(), "v1".to_string());
-        opts.vars = Some(vars);
-        assert!(router.match_route("/api/users", &mut opts).is_none());
+        let opts = MatchOpts {
+            vars: Some(vars),
+            ..Default::default()
+        };
+        assert!(router.match_route("/api/users", &opts).unwrap().is_none());
     }
 
     #[test]
@@ -334,30 +351,36 @@ mod tests {
             metadata: serde_json::json!({"handler": "users"}),
         }];
 
-        let mut router = RadixRouter::new(routes, None).unwrap();
+        let router = RadixRouter::new(routes).unwrap();
 
         // Without variables
-        let mut opts = MatchOpts::default();
-        assert!(router.match_route("/api/users", &mut opts).is_none());
+        let opts = MatchOpts::default();
+        assert!(router.match_route("/api/users", &opts).unwrap().is_none());
 
         // With correct variables
         let mut vars = HashMap::new();
         vars.insert("env".to_string(), "production".to_string());
         vars.insert("user_agent".to_string(), "Chrome/90.0".to_string());
-        opts.vars = Some(vars);
-        assert!(router.match_route("/api/users", &mut opts).is_some());
+        let opts = MatchOpts {
+            vars: Some(vars),
+            ..Default::default()
+        };
+        assert!(router.match_route("/api/users", &opts).unwrap().is_some());
 
         // With incorrect env
         let mut vars = HashMap::new();
         vars.insert("env".to_string(), "development".to_string());
         vars.insert("user_agent".to_string(), "Chrome/90.0".to_string());
-        opts.vars = Some(vars);
-        assert!(router.match_route("/api/users", &mut opts).is_none());
+        let opts = MatchOpts {
+            vars: Some(vars),
+            ..Default::default()
+        };
+        assert!(router.match_route("/api/users", &opts).unwrap().is_none());
     }
 
     #[test]
     fn test_add_and_delete_route() {
-        let mut router = RadixRouter::new(vec![], None).unwrap();
+        let mut router = RadixRouter::new(vec![]).unwrap();
 
         // Add route
         let route = Route {
@@ -374,18 +397,18 @@ mod tests {
 
         router.add_route(route.clone()).unwrap();
 
-        let mut opts = MatchOpts {
+        let opts = MatchOpts {
             method: Some("GET".to_string()),
             ..Default::default()
         };
 
         // Should match
-        assert!(router.match_route("/api/users", &mut opts).is_some());
+        assert!(router.match_route("/api/users", &opts).unwrap().is_some());
 
         // Delete route
         router.delete_route(route).unwrap();
 
         // Should not match
-        assert!(router.match_route("/api/users", &mut opts).is_none());
+        assert!(router.match_route("/api/users", &opts).unwrap().is_none());
     }
 }

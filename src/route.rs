@@ -157,7 +157,7 @@ pub struct Route {
     pub metadata: serde_json::Value,
 }
 
-/// Match options for route matching
+/// Match options for route matching (input only)
 #[derive(Debug, Clone, Default)]
 pub struct MatchOpts {
     /// HTTP method
@@ -168,8 +168,15 @@ pub struct MatchOpts {
     pub remote_addr: Option<String>,
     /// Request variables
     pub vars: Option<HashMap<String, String>>,
-    /// Matched parameters (output)
-    pub matched: Option<HashMap<String, String>>,
+}
+
+/// Match result containing metadata and extracted parameters
+#[derive(Debug, Clone)]
+pub struct MatchResult {
+    /// Route metadata
+    pub metadata: serde_json::Value,
+    /// Matched path parameters and other extracted values
+    pub matched: HashMap<String, String>,
 }
 
 /// Path operation type
@@ -201,6 +208,10 @@ pub(crate) struct RouteOpts {
 
     pub priority: i32,
     pub metadata: serde_json::Value,
+
+    /// Pre-compiled regex pattern for parameter extraction (if has_param=true)
+    /// Using Arc to make cloning cheap
+    pub compiled_pattern: Option<std::sync::Arc<(regex::Regex, Vec<String>)>>,
 }
 
 impl RouteOpts {
