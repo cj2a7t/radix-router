@@ -2,12 +2,12 @@
 name = "radix-router"
 version = "0.1.0"
 edition = "2021"
-authors = ["radix-router developers"]
-description = "High-performance HTTP router using Redis's radix tree (rax) with rich matching for paths, parameters, wildcards, methods, and hosts"
+authors = ["cj2a7t"]
+description = "A high-performance radix tree based HTTP router for Rust"
 license = "Apache-2.0"
-repository = "https://github.com/yourusername/radix-router"
-keywords = ["router", "radix", "http", "redis", "web"]
-categories = ["web-programming", "network-programming"]
+repository = "https://github.com/cj2a7t/radix-router"
+keywords = ["router", "radix", "api-gateway"]
+categories = ["radix", "api-gateway"]
 
 [dependencies]
 libc = "0.2"

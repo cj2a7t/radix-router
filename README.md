@@ -1,46 +1,90 @@
 # radix-router
 
-A high-performance, thread-safe radix tree based HTTP router for Rust.
+<div align="center">
 
-This is a Rust port of [lua-resty-radixtree](https://github.com/api7/lua-resty-radixtree), providing fast routing with rich matching capabilities and robust error handling.
+**A high-performance, thread-safe radix tree based HTTP router for Rust**
 
-The underlying radix tree implementation ([rax](https://github.com/antirez/rax)) is the same data structure used in **Redis** for Redis Streams and other internal components.
+[![License](https://img.shields.io/badge/license-Apache--2.0-blue.svg)](LICENSE)
+[![Rust](https://img.shields.io/badge/rust-stable-orange.svg)](https://www.rust-lang.org/)
 
-## Features
+*Based on Redis's radix tree implementation*
 
-- ⚡ **High Performance**: Based on C radix tree implementation (same as Redis)
-- 🎯 **Rich Matching**: Support for exact paths, parameters, wildcards
-- 🔍 **HTTP Method Matching**: Match specific HTTP methods
-- 🌐 **Host Matching**: Match specific hosts with wildcard support
-- 📊 **Priority Routing**: Higher priority routes match first
-- 🔧 **Custom Filters**: Add custom filter functions
-- 📝 **Variable Expressions**: Match based on request variables
-- 🦺 **Type Safe**: Full Rust type safety with `anyhow` error handling
-- 🔒 **Thread-Safe**: Safe for concurrent access from multiple threads
-- ⚡ **Lock-Free Queries**: Each query creates its own iterator for zero contention
-- 🚀 **Zero-Copy Pattern Matching**: Pre-compiled regex patterns with Arc sharing
+</div>
 
-## Quick Start
+---
+
+## 📖 Table of Contents
+
+- [About](#-about)
+- [Features](#-features)
+- [Quick Start](#-quick-start)
+- [Usage Guide](#-usage-guide)
+  - [Basic Routing](#basic-routing)
+  - [Path Parameters](#path-parameters)
+  - [Wildcards](#wildcards)
+  - [HTTP Methods](#http-methods)
+  - [Host Matching](#host-matching)
+  - [Priority Routing](#priority-routing)
+  - [Advanced Features](#advanced-features)
+- [Error Handling](#-error-handling)
+- [Concurrency & Thread Safety](#-concurrency--thread-safety)
+- [Performance](#-performance)
+- [Examples & Tests](#-examples--tests)
+- [Architecture](#-architecture)
+- [License](#-license)
+
+---
+
+## 🎯 About
+
+`radix-router` is a Rust port of [lua-resty-radixtree](https://github.com/api7/lua-resty-radixtree), providing fast and flexible HTTP routing. The underlying radix tree ([rax](https://github.com/antirez/rax)) is the same battle-tested data structure used in **Redis** for Redis Streams and internal routing.
+
+**Why radix-router?**
+- ⚡ High performance with lock-free queries
+- 🔒 Thread-safe with zero contention
+- 🎯 Rich matching capabilities
+- 🦺 Type-safe with proper error handling
+- 🚀 Production-ready
+
+---
+
+## ✨ Features
+
+- **Path Matching**: Exact paths, parameters (`:id`), wildcards (`*path`)
+- **HTTP Methods**: Match specific methods (GET, POST, etc.)
+- **Host Matching**: Match hosts with wildcard support (`*.example.com`)
+- **Priority Routing**: Higher priority routes match first
+- **Custom Filters**: Add custom logic with filter functions
+- **Variable Expressions**: Match based on request variables with regex support
+- **Thread-Safe**: Lock-free queries, safe for concurrent access
+- **Async Compatible**: Works with Tokio, async-std, etc.
+- **Type-Safe**: Full Rust type safety with `anyhow` error handling
+
+---
+
+## 🚀 Quick Start
+
+### Installation
 
 Add to your `Cargo.toml`:
 
 ```toml
 [dependencies]
 radix-router = "0.1"
+anyhow = "1.0"
+serde_json = "1.0"
 ```
 
-## Usage
-
-### Basic Example
+### Hello Router
 
 ```rust
 use radix_router::{RadixRouter, Route, HttpMethod, MatchOpts};
 
 fn main() -> anyhow::Result<()> {
-    // Define routes
+    // Create routes
     let routes = vec![
         Route {
-            id: "1".to_string(),
+            id: "get_users".to_string(),
             paths: vec!["/api/users".to_string()],
             methods: Some(HttpMethod::GET),
             hosts: None,
@@ -48,11 +92,11 @@ fn main() -> anyhow::Result<()> {
             vars: None,
             filter_fn: None,
             priority: 0,
-            metadata: serde_json::json!({"handler": "get_users"}),
+            metadata: serde_json::json!({"handler": "list_users"}),
         },
     ];
 
-    // Create router (returns Result for proper error handling)
+    // Initialize router
     let router = RadixRouter::new(routes)?;
 
     // Match a request
@@ -61,126 +105,110 @@ fn main() -> anyhow::Result<()> {
         ..Default::default()
     };
 
-    // match_route returns Result<Option<MatchResult>>
     if let Some(result) = router.match_route("/api/users", &opts)? {
-        println!("Matched! Metadata: {}", result.metadata);
-        println!("Params: {:?}", result.matched);
+        println!("✓ Matched! Handler: {}", result.metadata["handler"]);
+        println!("  Params: {:?}", result.matched);
     }
 
     Ok(())
 }
 ```
 
-### Error Handling
+---
 
-The router uses `anyhow` for robust error handling:
+## 📚 Usage Guide
 
-```rust
-use radix_router::{RadixRouter, MatchOpts, Result};
-use anyhow::Context;
+### Basic Routing
 
-fn handle_request(router: &RadixRouter, path: &str) -> Result<String> {
-    let opts = MatchOpts::default();
-    
-    // Distinguish between "not found" and "system error"
-    match router.match_route(path, &opts)? {
-        Some(matched) => Ok(format!("Handler: {}", matched.metadata["handler"])),
-        None => Ok("404 Not Found".to_string()),
-    }
-    // System errors (e.g., RwLock poisoned) are propagated via ?
-}
-```
-
-**Return Value Semantics:**
-- `Ok(Some(MatchResult))` - Found a matching route
-- `Ok(None)` - No matching route found (normal case)
-- `Err(anyhow::Error)` - System error (e.g., internal lock error)
-
-### Path Parameters
-
-```rust
-use radix_router::{RadixRouter, Route, MatchOpts};
-
-fn main() -> anyhow::Result<()> {
-    let routes = vec![
-        Route {
-            id: "1".to_string(),
-            paths: vec!["/user/:id/post/:pid".to_string()],
-            methods: None,
-            hosts: None,
-            remote_addrs: None,
-            vars: None,
-            filter_fn: None,
-            priority: 0,
-            metadata: serde_json::json!({"handler": "user_post"}),
-        },
-    ];
-
-    let router = RadixRouter::new(routes)?;
-    let opts = MatchOpts::default();
-
-    let result = router.match_route("/user/123/post/456", &opts)?
-        .expect("Route should match");
-
-    // Extract parameters
-    assert_eq!(result.matched.get("id").unwrap(), "123");
-    assert_eq!(result.matched.get("pid").unwrap(), "456");
-
-    Ok(())
-}
-```
-
-### Wildcards
+Match exact paths:
 
 ```rust
 let routes = vec![
     Route {
-        id: "1".to_string(),
-        paths: vec!["/files/*path".to_string()],
+        id: "home".to_string(),
+        paths: vec!["/".to_string()],
         methods: None,
         hosts: None,
         remote_addrs: None,
         vars: None,
         filter_fn: None,
         priority: 0,
+        metadata: serde_json::json!({"page": "home"}),
+    },
+];
+
+let router = RadixRouter::new(routes)?;
+let result = router.match_route("/", &MatchOpts::default())?;
+```
+
+### Path Parameters
+
+Extract dynamic segments from paths:
+
+```rust
+let routes = vec![
+    Route {
+        id: "user_detail".to_string(),
+        paths: vec!["/user/:id/post/:pid".to_string()],
+        // ... other fields
+        metadata: serde_json::json!({"handler": "get_user_post"}),
+    },
+];
+
+let router = RadixRouter::new(routes)?;
+let result = router.match_route("/user/123/post/456", &MatchOpts::default())?
+    .expect("should match");
+
+assert_eq!(result.matched.get("id").unwrap(), "123");
+assert_eq!(result.matched.get("pid").unwrap(), "456");
+```
+
+### Wildcards
+
+Match remaining path segments:
+
+```rust
+let routes = vec![
+    Route {
+        id: "static_files".to_string(),
+        paths: vec!["/files/*path".to_string()],
+        // ... other fields
         metadata: serde_json::json!({"handler": "serve_file"}),
     },
 ];
 
 let router = RadixRouter::new(routes)?;
-let result = router.match_route("/files/documents/readme.txt", &MatchOpts::default())?
-    .expect("Route should match");
+let result = router.match_route("/files/css/main.css", &MatchOpts::default())?
+    .expect("should match");
 
-assert_eq!(result.matched.get("path").unwrap(), "documents/readme.txt");
+assert_eq!(result.matched.get("path").unwrap(), "css/main.css");
 ```
 
-### HTTP Method Matching
+### HTTP Methods
+
+Match specific HTTP methods:
 
 ```rust
 let routes = vec![
     Route {
-        id: "1".to_string(),
+        id: "users_api".to_string(),
         paths: vec!["/api/users".to_string()],
-        methods: Some(HttpMethod::GET | HttpMethod::POST),
-        hosts: None,
-        remote_addrs: None,
-        vars: None,
-        filter_fn: None,
-        priority: 0,
+        methods: Some(HttpMethod::GET | HttpMethod::POST), // Multiple methods
+        // ... other fields
         metadata: serde_json::json!({"handler": "users"}),
     },
 ];
 
 let router = RadixRouter::new(routes)?;
 
-// GET request - matches
+// GET - matches
 let opts = MatchOpts {
     method: Some("GET".to_string()),
     ..Default::default()
 };
 assert!(router.match_route("/api/users", &opts)?.is_some());
 
-// DELETE request - does not match
+// DELETE - doesn't match
 let opts = MatchOpts {
     method: Some("DELETE".to_string()),
     ..Default::default()
@@ -190,75 +218,63 @@ assert!(router.match_route("/api/users", &opts)?.is_none());
 
 ### Host Matching
 
+Route based on hostname with wildcard support:
+
 ```rust
 let routes = vec![
     Route {
-        id: "1".to_string(),
+        id: "api_subdomain".to_string(),
         paths: vec!["/api".to_string()],
         methods: None,
-        hosts: Some(vec!["*.example.com".to_string()]),
-        remote_addrs: None,
-        vars: None,
-        filter_fn: None,
-        priority: 0,
+        hosts: Some(vec!["*.example.com".to_string()]), // Wildcard
+        // ... other fields
         metadata: serde_json::json!({"handler": "api"}),
     },
 ];
 
 let router = RadixRouter::new(routes)?;
 
-// Matches: api.example.com
 let opts = MatchOpts {
     host: Some("api.example.com".to_string()),
     ..Default::default()
 };
 assert!(router.match_route("/api", &opts)?.is_some());
-
-// Does not match: api.other.com
-let opts = MatchOpts {
-    host: Some("api.other.com".to_string()),
-    ..Default::default()
-};
-assert!(router.match_route("/api", &opts)?.is_none());
 ```
 
 ### Priority Routing
 
+Higher priority routes are matched first:
+
 ```rust
 let routes = vec![
     Route {
-        id: "1".to_string(),
+        id: "catch_all".to_string(),
         paths: vec!["/api/*".to_string()],
-        methods: None,
-        hosts: None,
-        remote_addrs: None,
-        vars: None,
-        filter_fn: None,
-        priority: 0,  // Low priority
-        metadata: serde_json::json!({"handler": "api_fallback"}),
+        priority: 0, // Lower priority
+        metadata: serde_json::json!({"handler": "fallback"}),
+        // ... other fields
     },
     Route {
-        id: "2".to_string(),
+        id: "specific".to_string(),
         paths: vec!["/api/users".to_string()],
-        methods: None,
-        hosts: None,
-        remote_addrs: None,
-        vars: None,
-        filter_fn: None,
-        priority: 10,  // High priority
-        metadata: serde_json::json!({"handler": "api_users"}),
+        priority: 10, // Higher priority - matches first
+        metadata: serde_json::json!({"handler": "users"}),
+        // ... other fields
     },
 ];
 
 let router = RadixRouter::new(routes)?;
-
-// Higher priority route matches first
 let result = router.match_route("/api/users", &MatchOpts::default())?
-    .expect("Route should match");
-assert_eq!(result.metadata["handler"], "api_users");
+    .expect("should match");
+
+assert_eq!(result.metadata["handler"], "users"); // Higher priority wins
 ```
 
-### Custom Filter Functions
+### Advanced Features
+
+#### Custom Filter Functions
+
+Add custom matching logic:
 
 ```rust
 use std::sync::Arc;
@@ -266,36 +282,35 @@ use std::collections::HashMap;
 
 let routes = vec![
     Route {
-        id: "1".to_string(),
-        paths: vec!["/api/users".to_string()],
-        methods: None,
-        hosts: None,
-        remote_addrs: None,
-        vars: None,
+        id: "v2_api".to_string(),
+        paths: vec!["/api/data".to_string()],
         filter_fn: Some(Arc::new(|vars, _opts| {
+            // Custom logic: check API version
             vars.get("version").map(|v| v == "v2").unwrap_or(false)
         })),
-        priority: 0,
-        metadata: serde_json::json!({"handler": "users_v2"}),
+        // ... other fields
+        metadata: serde_json::json!({"handler": "api_v2"}),
     },
 ];
 
 let router = RadixRouter::new(routes)?;
 
-// Without version - does not match
-assert!(router.match_route("/api/users", &MatchOpts::default())?.is_none());
-
-// With correct version - matches
+// With version variable - matches
 let mut vars = HashMap::new();
 vars.insert("version".to_string(), "v2".to_string());
 let opts = MatchOpts {
     vars: Some(vars),
     ..Default::default()
 };
-assert!(router.match_route("/api/users", &opts)?.is_some());
+assert!(router.match_route("/api/data", &opts)?.is_some());
+
+// Without version - doesn't match
+assert!(router.match_route("/api/data", &MatchOpts::default())?.is_none());
 ```
 
-### Variable Expressions
+#### Variable Expressions
+
+Match based on request variables:
 
 ```rust
 use radix_router::Expr;
@@ -303,18 +318,14 @@ use regex::Regex;
 
 let routes = vec![
     Route {
-        id: "1".to_string(),
+        id: "prod_api".to_string(),
         paths: vec!["/api/users".to_string()],
-        methods: None,
-        hosts: None,
-        remote_addrs: None,
         vars: Some(vec![
             Expr::Eq("env".to_string(), "production".to_string()),
             Expr::Regex("user_agent".to_string(), Regex::new("Chrome")?),
         ]),
-        filter_fn: None,
-        priority: 0,
-        metadata: serde_json::json!({"handler": "users"}),
+        // ... other fields
+        metadata: serde_json::json!({"handler": "prod_users"}),
     },
 ];
 
@@ -322,200 +333,237 @@ let router = RadixRouter::new(routes)?;
 
 let mut vars = HashMap::new();
 vars.insert("env".to_string(), "production".to_string());
-vars.insert("user_agent".to_string(), "Chrome/90.0".to_string());
+vars.insert("user_agent".to_string(), "Chrome/120.0".to_string());
 
 let opts = MatchOpts {
     vars: Some(vars),
     ..Default::default()
 };
-
 assert!(router.match_route("/api/users", &opts)?.is_some());
 ```
 
-## Thread Safety & Concurrency
+---
 
-🔒 **Fully Thread-Safe and Lock-Free for Queries**
+## 🛡️ Error Handling
 
-The router is designed for optimal concurrent read performance:
+The router uses `anyhow::Result` for proper error handling:
 
-### Architecture Highlights
+```rust
+use radix_router::{RadixRouter, MatchOpts};
+use anyhow::Context;
 
-- **Immutable Route Data**: After initialization, all route data is immutable and safe to share
-- **Lock-Free Queries**: Each `match_route()` call creates its own temporary iterator
-- **Pre-compiled Patterns**: Regex patterns are compiled at route registration time
-- **Zero Contention**: Multiple threads can query simultaneously without blocking
-- **Safe for Async**: Works seamlessly with Tokio, async-std, and other async runtimes
+fn handle_request(router: &RadixRouter, path: &str) -> anyhow::Result<String> {
+    let opts = MatchOpts::default();
+    
+    match router.match_route(path, &opts)? {
+        Some(result) => {
+            Ok(format!("Handler: {}", result.metadata["handler"]))
+        }
+        None => {
+            Ok("404 Not Found".to_string())
+        }
+    }
+    // System errors (e.g., lock errors) propagate via ?
+}
+```
 
-### Concurrency Model
+**Return Value Semantics:**
+- `Ok(Some(MatchResult))` → Route found and matched
+- `Ok(None)` → No matching route (normal case, not an error)
+- `Err(anyhow::Error)` → System error (e.g., internal lock failure)
+
+---
+
+## 🔒 Concurrency & Thread Safety
+
+The router is **fully thread-safe** and optimized for concurrent access:
+
+### Architecture
+
+- **Lock-Free Queries**: Each query creates its own iterator
+- **Immutable Routes**: Route data is immutable after initialization
+- **Pre-compiled Patterns**: Regex compiled once at startup
+- **Zero Contention**: Multiple threads query without blocking
+
+### Usage with Multiple Threads
 
 ```rust
 use std::sync::Arc;
 use std::thread;
 
 fn main() -> anyhow::Result<()> {
-    // Initialize once at startup
     let routes = vec![/* your routes */];
     let router = Arc::new(RadixRouter::new(routes)?);
 
-    // Share across threads - completely thread-safe
+    // Share across threads
     let mut handles = vec![];
     for i in 0..8 {
-        let router_clone = Arc::clone(&router);
-        let handle = thread::spawn(move || {
+        let router = Arc::clone(&router);
+        handles.push(thread::spawn(move || {
             let opts = MatchOpts {
                 method: Some("GET".to_string()),
                 ..Default::default()
             };
-            
-            // Lock-free concurrent matching
-            // Each thread gets its own iterator - zero contention!
-            match router_clone.match_route("/api/users", &opts) {
-                Ok(Some(result)) => println!("Thread {} matched!", i),
-                Ok(None) => println!("Thread {} - no match", i),
-                Err(e) => eprintln!("Thread {} error: {}", i, e),
-            }
-        });
-        handles.push(handle);
+            // Lock-free concurrent access
+            router.match_route("/api/users", &opts)
+        }));
     }
 
     for handle in handles {
-        handle.join().unwrap();
+        handle.join().unwrap()?;
     }
 
     Ok(())
 }
 ```
 
-### How It Works
+### Dynamic Routes (Optional)
 
-**Query Path (Read-Only, Lock-Free):**
-1. **Hash Path Lookup**: O(1), completely lock-free, no locks at all
-2. **Radix Tree Lookup**: 
-   - Acquires read lock on tree (RwLock, allows multiple concurrent readers)
-   - Creates temporary iterator (per-query, thread-local)
-   - Searches tree using iterator
-   - No shared mutable state between queries
-
-**Key Insight**: Each query creates its own iterator, so there's no shared mutable state between concurrent queries. The RwLock only protects the tree structure itself, which is read-only during queries.
-
-### Performance Characteristics
-
-| Operation | Complexity | Concurrency |
-|-----------|------------|-------------|
-| Exact path match (hash) | O(1) | Lock-free |
-| Radix tree match | O(k)* | Multiple readers (RwLock) |
-| Parameter extraction | O(1) | Per-query state |
-| Pattern matching | O(1) | Pre-compiled (Arc) |
-
-\* k = path length
-
-### Dynamic Routes (If Needed)
-
-The router supports dynamic route updates through `add_route()` and `delete_route()`:
+For dynamic route updates, wrap in an additional `RwLock`:
 
 ```rust
 use std::sync::{Arc, RwLock};
 
-// Wrap router in RwLock for dynamic updates
 let router = Arc::new(RwLock::new(RadixRouter::new(vec![])?));
 
-// Write: add/remove routes (exclusive lock)
-{
-    let mut r = router.write().unwrap();
-    r.add_route(new_route)?;
-}
+// Write (exclusive)
+router.write().unwrap().add_route(new_route)?;
 
-// Read: match routes (shared lock, many concurrent readers)
-{
-    let r = router.read().unwrap();
-    r.match_route("/api/users", &opts)?;
-}
+// Read (shared, many concurrent readers)
+router.read().unwrap().match_route("/path", &opts)?;
 ```
 
-⚠️ **Best Practice**: For optimal performance, initialize all routes at startup and treat the router as immutable. Dynamic updates require external locking and reduce concurrency.
+⚠️ **Best Practice**: Initialize routes at startup for best performance.
 
-## Performance
+---
 
-The router achieves high performance through:
-- **Lock-free exact match**: Hash-based O(1) lookup with zero locks
-- **Temporary iterators**: Each query gets its own iterator (zero contention)
-- **Pre-compiled patterns**: Regex compiled at route registration time
-- **Zero-copy extraction**: Parameters extracted without extra allocations
-- **C-based radix tree**: Same battle-tested implementation used in Redis
+## ⚡ Performance
 
-### Benchmark Results
+### Benchmark Results (Release Mode)
 
 **Single Thread:**
-- Exact path matching: ~15M+ ops/sec
-- Parameter matching: ~5M+ ops/sec
-- Wildcard matching: ~4M+ ops/sec
+- Exact match: **15M+ ops/sec** (hash-based, O(1))
+- Parameter extraction: **5M+ ops/sec**
+- Wildcard matching: **4M+ ops/sec**
 
 **Multi-threaded (8 threads):**
-- Near-linear scaling due to lock-free design
-- No contention on the hot path
-- Safe for use in high-concurrency web servers
+- Near-linear scaling
+- **Zero contention** on query path
+- Suitable for high-concurrency servers
 
-Run the benchmark yourself:
+### Run Benchmarks
+
 ```bash
-cargo run --release --example concurrency_test
+# Performance benchmark
+cargo run --example benchmark --release
+
+# Concurrency test
+cargo run --example concurrency_test --release
+
+# Stress test (10,000 routes, 16 threads)
+cargo run --example stress_test --release
 ```
 
-## Running Examples
+---
+
+## 🧪 Examples & Tests
+
+### Built-in Examples
+
+The project includes comprehensive examples:
+
+| Example | Description | Lines |
+|---------|-------------|-------|
+| `basic.rs` | Basic usage and core features | 235 |
+| `edge_cases.rs` | Boundary conditions and edge cases | 460 |
+| `integration.rs` | Real-world API gateway scenarios | 630 |
+| `vars_filter_test.rs` | Advanced filters and expressions | 506 |
+| `benchmark.rs` | Performance benchmarks | 413 |
+| `concurrency_test.rs` | Multi-threaded performance | 174 |
+| `stress_test.rs` | Large-scale stress testing | 319 |
+
+### Run Examples
 
 ```bash
-# Basic usage examples
+# Basic examples
 cargo run --example basic
+cargo run --example edge_cases
+cargo run --example integration
+cargo run --example vars_filter_test
 
-# Concurrency and performance test
-cargo run --release --example concurrency_test
+# Performance tests (use --release)
+cargo run --example benchmark --release
+cargo run --example concurrency_test --release
+cargo run --example stress_test --release
+
+# Run all tests
+./run_all_tests.sh --release
 ```
 
-## Running Tests
+### Run Unit Tests
 
 ```bash
 cargo test
 ```
 
-## Architecture
+📖 **For detailed documentation**, see [`examples/README.md`](examples/README.md)
+
+---
+
+## 🏗️ Architecture
 
 ```
-┌─────────────────────────────────────────────────────────┐
-│                   Rust API Layer                        │
-│  - Route matching (anyhow error handling)               │
-│  - Parameter extraction (zero-copy)                     │
-│  - Filter evaluation                                    │
-│  - Thread-safe querying (RwLock + per-query iterators)  │
-└─────────────────────────────────────────────────────────┘
-                          ↓
-┌─────────────────────────────────────────────────────────┐
-│                   Rust FFI Layer                        │
-│  - Safe wrappers around C functions                     │
-│  - RAII for resource management                         │
-└─────────────────────────────────────────────────────────┘
-                          ↓
-┌─────────────────────────────────────────────────────────┐
-│               C Layer (from Redis)                      │
-│  - Radix tree (rax.c)                                   │
-│  - Same implementation used in Redis Streams,           │
-│    Redis Cluster, and other Redis modules               │
-└─────────────────────────────────────────────────────────┘
+┌─────────────────────────────────────────────────┐
+│             Rust API Layer                      │
+│  • Route matching & parameter extraction        │
+│  • Filter evaluation & priority sorting         │
+│  • Error handling (anyhow)                      │
+│  • Thread-safe querying (RwLock + iterators)    │
+└─────────────────────────────────────────────────┘
+                      ↓
+┌─────────────────────────────────────────────────┐
+│             Rust FFI Layer                      │
+│  • Safe wrappers around C functions             │
+│  • RAII for resource management                 │
+│  • Memory safety guarantees                     │
+└─────────────────────────────────────────────────┘
+                      ↓
+┌─────────────────────────────────────────────────┐
+│         C Layer (Redis rax)                     │
+│  • Radix tree implementation                    │
+│  • Battle-tested in Redis production            │
+└─────────────────────────────────────────────────┘
 ```
 
-## Why Choose radix-router?
+### Key Components
 
-✅ **Battle-tested**: Built on Redis's radix tree implementation  
-✅ **Type-safe**: Full Rust type safety with proper error handling  
-✅ **High performance**: Lock-free queries, pre-compiled patterns  
-✅ **Thread-safe**: Safe for concurrent access from multiple threads  
-✅ **Rich features**: Parameters, wildcards, methods, hosts, priorities  
-✅ **Production-ready**: Robust error handling with `anyhow`  
-✅ **Async-compatible**: Works with Tokio, async-std, and other runtimes  
+- **`RadixRouter`**: Main router struct with thread-safe API
+- **`Route`**: Route definition with matching rules
+- **`MatchOpts`**: Request matching options
+- **`MatchResult`**: Matched route with extracted parameters
+- **`Expr`**: Variable expression for conditional matching
+- **`FilterFn`**: Custom filter function type
 
-## License
+---
+
+## 📄 License
 
 Apache-2.0
 
-## Credits
+---
 
-- Based on [lua-resty-radixtree](https://github.com/api7/lua-resty-radixtree) by APISIX
+## 🙏 Credits
+
+- Based on [lua-resty-radixtree](https://github.com/api7/lua-resty-radixtree) by Apache APISIX
 - Radix tree implementation from [Redis](https://github.com/redis/redis) by Salvatore Sanfilippo
+- Inspired by high-performance routing needs in API gateways
+
+---
+
+<div align="center">
+
+**Built with ❤️ for high-performance routing**
+
+[Report Bug](https://github.com/yourusername/radix-router/issues) · [Request Feature](https://github.com/yourusername/radix-router/issues)
+
+</div>

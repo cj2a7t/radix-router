@@ -1,6 +1,5 @@
 /// Concurrent performance test demonstrating the router's thread-safety and async-safety
 /// This example shows that multiple threads can query the router simultaneously without contention
-
 use radix_router::{HttpMethod, MatchOpts, RadixRouter, Route};
 use std::sync::Arc;
 use std::thread;
@@ -96,14 +95,14 @@ fn main() -> anyhow::Result<()> {
     for (path, desc) in &test_cases {
         let start = Instant::now();
         let iterations = 100_000;
-        
+
         for _ in 0..iterations {
             let _ = router.match_route(path, &opts).ok();
         }
-        
+
         let elapsed = start.elapsed();
         let ops_per_sec = iterations as f64 / elapsed.as_secs_f64();
-        
+
         println!(
             "{:30} - {:>12.0} ops/sec ({:>8.2} µs/op)",
             desc,
@@ -119,35 +118,35 @@ fn main() -> anyhow::Result<()> {
     for (path, desc) in &test_cases {
         let start = Instant::now();
         let iterations_per_thread = 50_000;
-        
+
         let mut handles = vec![];
-        
+
         for _ in 0..num_threads {
             let router_clone = Arc::clone(&router);
             let path_owned = path.to_string();
-            
+
             let handle = thread::spawn(move || {
                 let opts = MatchOpts {
                     method: Some("GET".to_string()),
                     ..Default::default()
                 };
-                
+
                 for _ in 0..iterations_per_thread {
                     let _ = router_clone.match_route(&path_owned, &opts).ok();
                 }
             });
-            
+
             handles.push(handle);
         }
-        
+
         for handle in handles {
             handle.join().unwrap();
         }
-        
+
         let elapsed = start.elapsed();
         let total_ops = num_threads * iterations_per_thread;
         let ops_per_sec = total_ops as f64 / elapsed.as_secs_f64();
-        
+
         println!(
             "{:30} - {:>12.0} ops/sec ({:>8.2} µs/op)",
             desc,
@@ -162,14 +161,13 @@ fn main() -> anyhow::Result<()> {
     println!("✅ Thread-safe: Safe for concurrent access from multiple threads");
     println!("✅ Async-safe: Safe for use in async/await contexts (Tokio, async-std)");
     println!("✅ Zero contention: No lock waiting in the critical path");
-    
+
     println!("\n=== Architecture Highlights ===");
     println!("• RwLock with read-only access during queries");
     println!("• Temporary iterators (malloc + init only)");
     println!("• Patterns compiled at route registration");
     println!("• Arc-wrapped compiled patterns (cheap clones)");
     println!("• Hash-based fast path for exact matches");
-    
+
     Ok(())
 }
-

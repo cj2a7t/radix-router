@@ -93,7 +93,10 @@ fn main() -> anyhow::Result<()> {
 
         if let Some(result) = router.match_route("/api/users", &opts)? {
             println!("   ✓ Matched!");
-            println!("   Metadata: {}", serde_json::to_string_pretty(&result.metadata).unwrap());
+            println!(
+                "   Metadata: {}",
+                serde_json::to_string_pretty(&result.metadata).unwrap()
+            );
             println!("   Matched params: {:?}", result.matched);
         } else {
             println!("   ✗ No match");
@@ -114,7 +117,10 @@ fn main() -> anyhow::Result<()> {
 
         if let Some(result) = router.match_route("/api/user/12345", &opts)? {
             println!("   ✓ Matched!");
-            println!("   Metadata: {}", serde_json::to_string_pretty(&result.metadata).unwrap());
+            println!(
+                "   Metadata: {}",
+                serde_json::to_string_pretty(&result.metadata).unwrap()
+            );
             println!("   Matched params: {:?}", result.matched);
         } else {
             println!("   ✗ No match");
@@ -135,7 +141,10 @@ fn main() -> anyhow::Result<()> {
 
         if let Some(result) = router.match_route("/api/user/12345/posts", &opts)? {
             println!("   ✓ Matched!");
-            println!("   Metadata: {}", serde_json::to_string_pretty(&result.metadata).unwrap());
+            println!(
+                "   Metadata: {}",
+                serde_json::to_string_pretty(&result.metadata).unwrap()
+            );
             println!("   Matched params: {:?}", result.matched);
         } else {
             println!("   ✗ No match");
@@ -156,7 +165,10 @@ fn main() -> anyhow::Result<()> {
 
         if let Some(result) = router.match_route("/admin/dashboard/settings", &opts)? {
             println!("   ✓ Matched!");
-            println!("   Metadata: {}", serde_json::to_string_pretty(&result.metadata).unwrap());
+            println!(
+                "   Metadata: {}",
+                serde_json::to_string_pretty(&result.metadata).unwrap()
+            );
             println!("   Matched params: {:?}", result.matched);
         } else {
             println!("   ✗ No match");
@@ -177,7 +189,10 @@ fn main() -> anyhow::Result<()> {
 
         if let Some(result) = router.match_route("/api/health", &opts)? {
             println!("   ✓ Matched!");
-            println!("   Metadata: {}", serde_json::to_string_pretty(&result.metadata).unwrap());
+            println!(
+                "   Metadata: {}",
+                serde_json::to_string_pretty(&result.metadata).unwrap()
+            );
             println!("   Matched params: {:?}", result.matched);
         } else {
             println!("   ✗ No match");
@@ -198,7 +213,10 @@ fn main() -> anyhow::Result<()> {
 
         if let Some(result) = router.match_route("/api/users", &opts)? {
             println!("   ✓ Matched!");
-            println!("   Metadata: {}", serde_json::to_string_pretty(&result.metadata).unwrap());
+            println!(
+                "   Metadata: {}",
+                serde_json::to_string_pretty(&result.metadata).unwrap()
+            );
         } else {
             println!("   ✗ No match (method not allowed)");
         }
@@ -218,7 +236,10 @@ fn main() -> anyhow::Result<()> {
 
         if let Some(result) = router.match_route("/api/user/12345", &opts)? {
             println!("   ✓ Matched!");
-            println!("   Metadata: {}", serde_json::to_string_pretty(&result.metadata).unwrap());
+            println!(
+                "   Metadata: {}",
+                serde_json::to_string_pretty(&result.metadata).unwrap()
+            );
             println!("   Matched params: {:?}", result.matched);
         } else {
             println!("   ✗ No match");
@@ -228,7 +249,6 @@ fn main() -> anyhow::Result<()> {
 
     println!("=== Router Debug Info ===");
     println!("{:?}", router);
-    
+
     Ok(())
 }
-
