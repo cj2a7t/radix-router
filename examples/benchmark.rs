@@ -1,6 +1,6 @@
 /// Performance benchmarks for different routing scenarios
 /// This example measures and compares performance across various route types and patterns
-use radix_router::{HttpMethod, MatchOpts, RadixRouter, Route};
+use router_radix::{HttpMethod, MatchOpts, RadixRouter, Route};
 use std::time::Instant;
 
 fn benchmark(name: &str, iterations: usize, f: impl Fn()) {

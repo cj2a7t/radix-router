@@ -1,4 +1,4 @@
-//! # radix-router
+//! # router-radix
 //!
 //! A high-performance radix tree based HTTP router for Rust.
 //!
@@ -15,7 +15,7 @@
 //! ## Example
 //!
 //! ```rust
-//! use radix_router::{RadixRouter, Route, HttpMethod, MatchOpts};
+//! use router-radix::{RadixRouter, Route, HttpMethod, MatchOpts};
 //! use std::collections::HashMap;
 //!
 //! # fn main() -> anyhow::Result<()> {

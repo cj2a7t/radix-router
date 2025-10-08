@@ -1,6 +1,6 @@
 /// Variable expressions and filter functions testing
 /// This example demonstrates advanced routing with custom logic
-use radix_router::{Expr, HttpMethod, MatchOpts, RadixRouter, Route};
+use router_radix::{Expr, HttpMethod, MatchOpts, RadixRouter, Route};
 use regex::Regex;
 use std::collections::HashMap;
 use std::sync::Arc;

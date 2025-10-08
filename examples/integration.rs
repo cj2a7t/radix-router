@@ -1,6 +1,6 @@
 /// Integration test simulating real-world API gateway scenarios
 /// This example demonstrates how the router would be used in production
-use radix_router::{HttpMethod, MatchOpts, RadixRouter, Route};
+use router_radix::{HttpMethod, MatchOpts, RadixRouter, Route};
 
 fn main() -> anyhow::Result<()> {
     println!("=== Real-World API Gateway Integration Test ===\n");

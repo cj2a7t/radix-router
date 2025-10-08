@@ -1,6 +1,6 @@
 /// Edge cases and boundary conditions testing
 /// This example tests various edge cases and boundary conditions to ensure router robustness
-use radix_router::{HttpMethod, MatchOpts, RadixRouter, Route};
+use router_radix::{HttpMethod, MatchOpts, RadixRouter, Route};
 
 fn main() -> anyhow::Result<()> {
     println!("=== Edge Cases & Boundary Conditions Test ===\n");

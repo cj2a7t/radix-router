@@ -1,4 +1,4 @@
-use radix_router::{HttpMethod, MatchOpts, RadixRouter, Route};
+use router_radix::{HttpMethod, MatchOpts, RadixRouter, Route};
 
 fn main() -> anyhow::Result<()> {
     // Create routes

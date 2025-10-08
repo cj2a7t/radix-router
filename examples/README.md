@@ -1,6 +1,6 @@
 # Radix Router Examples & Test Cases
 
-这个目录包含了 radix-router 的完整示例和测试用例集合。
+这个目录包含了 router-radix 的完整示例和测试用例集合。
 
 ## 测试用例概览
 
@@ -322,7 +322,7 @@ echo "=== All Tests Completed Successfully! ==="
 /// 测试描述
 /// 这个示例测试...
 
-use radix_router::{HttpMethod, MatchOpts, RadixRouter, Route};
+use router-radix::{HttpMethod, MatchOpts, RadixRouter, Route};
 
 fn main() -> anyhow::Result<()> {
     println!("=== Your Test Name ===\n");

@@ -1,4 +1,4 @@
-# radix-router
+# router_radix
 
 <div align="center">
 
@@ -37,9 +37,9 @@
 
 ## 🎯 About
 
-`radix-router` is a Rust port of [lua-resty-radixtree](https://github.com/api7/lua-resty-radixtree), providing fast and flexible HTTP routing. The underlying radix tree ([rax](https://github.com/antirez/rax)) is the same battle-tested data structure used in **Redis** for Redis Streams and internal routing.
+`router_radix` is a Rust port of [lua-resty-radixtree](https://github.com/api7/lua-resty-radixtree), providing fast and flexible HTTP routing. The underlying radix tree ([rax](https://github.com/antirez/rax)) is the same battle-tested data structure used in **Redis** for Redis Streams and internal routing.
 
-**Why radix-router?**
+**Why router_radix?**
 - ⚡ High performance with lock-free queries
 - 🔒 Thread-safe with zero contention
 - 🎯 Rich matching capabilities
@@ -70,15 +70,15 @@ Add to your `Cargo.toml`:
 
 ```toml
 [dependencies]
-radix-router = "0.1"
-anyhow = "1.0"
-serde_json = "1.0"
+# router_radix = "0.1.0"
+# anyhow = "1.0"
+# serde_json = "1.0"
 ```
 
 ### Hello Router
 
 ```rust
-use radix_router::{RadixRouter, Route, HttpMethod, MatchOpts};
+use router_radix::{RadixRouter, Route, HttpMethod, MatchOpts};
 
 fn main() -> anyhow::Result<()> {
     // Create routes
@@ -313,7 +313,7 @@ assert!(router.match_route("/api/data", &MatchOpts::default())?.is_none());
 Match based on request variables:
 
 ```rust
-use radix_router::Expr;
+use router_radix::Expr;
 use regex::Regex;
 
 let routes = vec![
@@ -349,7 +349,7 @@ assert!(router.match_route("/api/users", &opts)?.is_some());
 The router uses `anyhow::Result` for proper error handling:
 
 ```rust
-use radix_router::{RadixRouter, MatchOpts};
+use router_radix::{RadixRouter, MatchOpts};
 use anyhow::Context;
 
 fn handle_request(router: &RadixRouter, path: &str) -> anyhow::Result<String> {
@@ -564,6 +564,6 @@ Apache-2.0
 
 **Built with ❤️ for high-performance routing**
 
-[Report Bug](https://github.com/yourusername/radix-router/issues) · [Request Feature](https://github.com/yourusername/radix-router/issues)
+[Report Bug](https://github.com/cj2a7t/router_radix/issues) · [Request Feature](https://github.com/cj2a7t/router_radix/issues)
 
 </div>

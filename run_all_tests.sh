@@ -1,5 +1,5 @@
 #!/bin/bash
-# Run all radix-router test examples
+# Run all router-radix test examples
 # Usage: ./run_all_tests.sh [--release]
 
 set -e

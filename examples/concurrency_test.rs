@@ -1,6 +1,6 @@
 /// Concurrent performance test demonstrating the router's thread-safety and async-safety
 /// This example shows that multiple threads can query the router simultaneously without contention
-use radix_router::{HttpMethod, MatchOpts, RadixRouter, Route};
+use router_radix::{HttpMethod, MatchOpts, RadixRouter, Route};
 use std::sync::Arc;
 use std::thread;
 use std::time::Instant;

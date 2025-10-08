@@ -1,6 +1,6 @@
 /// Stress test with large number of routes and concurrent operations
 /// This example tests router behavior under heavy load
-use radix_router::{HttpMethod, MatchOpts, RadixRouter, Route};
+use router_radix::{HttpMethod, MatchOpts, RadixRouter, Route};
 use std::sync::Arc;
 use std::thread;
 use std::time::Instant;
