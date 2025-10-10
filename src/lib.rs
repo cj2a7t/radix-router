@@ -15,15 +15,15 @@
 //! ## Example
 //!
 //! ```rust
-//! use router-radix::{RadixRouter, Route, HttpMethod, MatchOpts};
+//! use router_radix::{RadixRouter, RadixNode, RadixHttpMethod, RadixMatchOpts};
 //! use std::collections::HashMap;
 //!
 //! # fn main() -> anyhow::Result<()> {
 //! let routes = vec![
-//!     Route {
+//!     RadixNode {
 //!         id: "1".to_string(),
 //!         paths: vec!["/api/users".to_string()],
-//!         methods: Some(HttpMethod::GET),
+//!         methods: Some(RadixHttpMethod::GET),
 //!         hosts: None,
 //!         remote_addrs: None,
 //!         vars: None,
@@ -31,10 +31,10 @@
 //!         priority: 0,
 //!         metadata: serde_json::json!({"handler": "get_users"}),
 //!     },
-//!     Route {
+//!     RadixNode {
 //!         id: "2".to_string(),
 //!         paths: vec!["/api/user/:id".to_string()],
-//!         methods: Some(HttpMethod::GET),
+//!         methods: Some(RadixHttpMethod::GET),
 //!         hosts: None,
 //!         remote_addrs: None,
 //!         vars: None,
@@ -46,7 +46,7 @@
 //!
 //! let router = RadixRouter::new(routes)?;
 //!
-//! let opts = MatchOpts {
+//! let opts = RadixMatchOpts {
 //!     method: Some("GET".to_string()),
 //!     ..Default::default()
 //! };
@@ -69,7 +69,7 @@ mod route;
 mod router;
 
 // Re-export public types
-pub use route::{Expr, FilterFn, HostPattern, HttpMethod, MatchOpts, MatchResult, Route};
+pub use route::{Expr, FilterFn, HostPattern, RadixHttpMethod, RadixMatchOpts, MatchResult, RadixNode};
 pub use router::RadixRouter;
 
 // Re-export anyhow types for convenience
@@ -82,10 +82,10 @@ mod tests {
 
     #[test]
     fn test_basic_match() {
-        let routes = vec![Route {
+        let routes = vec![RadixNode {
             id: "1".to_string(),
             paths: vec!["/api/users".to_string()],
-            methods: Some(HttpMethod::GET),
+            methods: Some(RadixHttpMethod::GET),
             hosts: None,
             remote_addrs: None,
             vars: None,
@@ -96,7 +96,7 @@ mod tests {
 
         let router = RadixRouter::new(routes).unwrap();
 
-        let opts = MatchOpts {
+        let opts = RadixMatchOpts {
             method: Some("GET".to_string()),
             ..Default::default()
         };
@@ -109,10 +109,10 @@ mod tests {
 
     #[test]
     fn test_method_not_allowed() {
-        let routes = vec![Route {
+        let routes = vec![RadixNode {
             id: "1".to_string(),
             paths: vec!["/api/users".to_string()],
-            methods: Some(HttpMethod::GET),
+            methods: Some(RadixHttpMethod::GET),
             hosts: None,
             remote_addrs: None,
             vars: None,
@@ -123,7 +123,7 @@ mod tests {
 
         let router = RadixRouter::new(routes).unwrap();
 
-        let opts = MatchOpts {
+        let opts = RadixMatchOpts {
             method: Some("POST".to_string()),
             ..Default::default()
         };
@@ -134,7 +134,7 @@ mod tests {
 
     #[test]
     fn test_param_extraction() {
-        let routes = vec![Route {
+        let routes = vec![RadixNode {
             id: "1".to_string(),
             paths: vec!["/user/:id/post/:pid".to_string()],
             methods: None,
@@ -148,7 +148,7 @@ mod tests {
 
         let router = RadixRouter::new(routes).unwrap();
 
-        let opts = MatchOpts::default();
+        let opts = RadixMatchOpts::default();
 
         let result = router.match_route("/user/123/post/456", &opts).unwrap();
 
@@ -160,7 +160,7 @@ mod tests {
 
     #[test]
     fn test_wildcard() {
-        let routes = vec![Route {
+        let routes = vec![RadixNode {
             id: "1".to_string(),
             paths: vec!["/files/*path".to_string()],
             methods: None,
@@ -174,7 +174,7 @@ mod tests {
 
         let router = RadixRouter::new(routes).unwrap();
 
-        let opts = MatchOpts::default();
+        let opts = RadixMatchOpts::default();
 
         let result = router.match_route("/files/documents/readme.txt", &opts).unwrap();
 
@@ -185,7 +185,7 @@ mod tests {
 
     #[test]
     fn test_wildcard_host() {
-        let routes = vec![Route {
+        let routes = vec![RadixNode {
             id: "1".to_string(),
             paths: vec!["/api".to_string()],
             methods: None,
@@ -199,7 +199,7 @@ mod tests {
 
         let router = RadixRouter::new(routes).unwrap();
 
-        let opts = MatchOpts {
+        let opts = RadixMatchOpts {
             host: Some("api.example.com".to_string()),
             ..Default::default()
         };
@@ -208,7 +208,7 @@ mod tests {
         assert!(result.is_some());
 
         // Test non-matching host
-        let opts = MatchOpts {
+        let opts = RadixMatchOpts {
             host: Some("api.other.com".to_string()),
             ..Default::default()
         };
@@ -219,7 +219,7 @@ mod tests {
     #[test]
     fn test_priority() {
         let routes = vec![
-            Route {
+            RadixNode {
                 id: "1".to_string(),
                 paths: vec!["/api/*".to_string()],
                 methods: None,
@@ -230,7 +230,7 @@ mod tests {
                 priority: 0,
                 metadata: serde_json::json!({"handler": "low"}),
             },
-            Route {
+            RadixNode {
                 id: "2".to_string(),
                 paths: vec!["/api/users".to_string()],
                 methods: None,
@@ -245,7 +245,7 @@ mod tests {
 
         let router = RadixRouter::new(routes).unwrap();
 
-        let opts = MatchOpts::default();
+        let opts = RadixMatchOpts::default();
         let result = router.match_route("/api/users", &opts).unwrap();
 
         assert!(result.is_some());
@@ -255,10 +255,10 @@ mod tests {
 
     #[test]
     fn test_multiple_methods() {
-        let routes = vec![Route {
+        let routes = vec![RadixNode {
             id: "1".to_string(),
             paths: vec!["/api/users".to_string()],
-            methods: Some(HttpMethod::GET | HttpMethod::POST),
+            methods: Some(RadixHttpMethod::GET | RadixHttpMethod::POST),
             hosts: None,
             remote_addrs: None,
             vars: None,
@@ -270,21 +270,21 @@ mod tests {
         let router = RadixRouter::new(routes).unwrap();
 
         // Test GET
-        let opts = MatchOpts {
+        let opts = RadixMatchOpts {
             method: Some("GET".to_string()),
             ..Default::default()
         };
         assert!(router.match_route("/api/users", &opts).unwrap().is_some());
 
         // Test POST
-        let opts = MatchOpts {
+        let opts = RadixMatchOpts {
             method: Some("POST".to_string()),
             ..Default::default()
         };
         assert!(router.match_route("/api/users", &opts).unwrap().is_some());
 
         // Test DELETE (not allowed)
-        let opts = MatchOpts {
+        let opts = RadixMatchOpts {
             method: Some("DELETE".to_string()),
             ..Default::default()
         };
@@ -293,7 +293,7 @@ mod tests {
 
     #[test]
     fn test_filter_function() {
-        let routes = vec![Route {
+        let routes = vec![RadixNode {
             id: "1".to_string(),
             paths: vec!["/api/users".to_string()],
             methods: None,
@@ -310,13 +310,13 @@ mod tests {
         let router = RadixRouter::new(routes).unwrap();
 
         // Without version variable
-        let opts = MatchOpts::default();
+        let opts = RadixMatchOpts::default();
         assert!(router.match_route("/api/users", &opts).unwrap().is_none());
 
         // With correct version
         let mut vars = HashMap::new();
         vars.insert("version".to_string(), "v2".to_string());
-        let opts = MatchOpts {
+        let opts = RadixMatchOpts {
             vars: Some(vars),
             ..Default::default()
         };
@@ -325,7 +325,7 @@ mod tests {
         // With incorrect version
         let mut vars = HashMap::new();
         vars.insert("version".to_string(), "v1".to_string());
-        let opts = MatchOpts {
+        let opts = RadixMatchOpts {
             vars: Some(vars),
             ..Default::default()
         };
@@ -336,7 +336,7 @@ mod tests {
     fn test_expression_matching() {
         use regex::Regex;
 
-        let routes = vec![Route {
+        let routes = vec![RadixNode {
             id: "1".to_string(),
             paths: vec!["/api/users".to_string()],
             methods: None,
@@ -354,14 +354,14 @@ mod tests {
         let router = RadixRouter::new(routes).unwrap();
 
         // Without variables
-        let opts = MatchOpts::default();
+        let opts = RadixMatchOpts::default();
         assert!(router.match_route("/api/users", &opts).unwrap().is_none());
 
         // With correct variables
         let mut vars = HashMap::new();
         vars.insert("env".to_string(), "production".to_string());
         vars.insert("user_agent".to_string(), "Chrome/90.0".to_string());
-        let opts = MatchOpts {
+        let opts = RadixMatchOpts {
             vars: Some(vars),
             ..Default::default()
         };
@@ -371,7 +371,7 @@ mod tests {
         let mut vars = HashMap::new();
         vars.insert("env".to_string(), "development".to_string());
         vars.insert("user_agent".to_string(), "Chrome/90.0".to_string());
-        let opts = MatchOpts {
+        let opts = RadixMatchOpts {
             vars: Some(vars),
             ..Default::default()
         };
@@ -383,10 +383,10 @@ mod tests {
         let mut router = RadixRouter::new(vec![]).unwrap();
 
         // Add route
-        let route = Route {
+        let route = RadixNode {
             id: "1".to_string(),
             paths: vec!["/api/users".to_string()],
-            methods: Some(HttpMethod::GET),
+            methods: Some(RadixHttpMethod::GET),
             hosts: None,
             remote_addrs: None,
             vars: None,
@@ -397,7 +397,7 @@ mod tests {
 
         router.add_route(route.clone()).unwrap();
 
-        let opts = MatchOpts {
+        let opts = RadixMatchOpts {
             method: Some("GET".to_string()),
             ..Default::default()
         };

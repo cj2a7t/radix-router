@@ -1,12 +1,12 @@
-use router_radix::{HttpMethod, MatchOpts, RadixRouter, Route};
+use router_radix::{RadixHttpMethod, RadixMatchOpts, RadixNode, RadixRouter};
 
 fn main() -> anyhow::Result<()> {
     // Create routes
     let routes = vec![
-        Route {
+        RadixNode {
             id: "1".to_string(),
             paths: vec!["/api/users".to_string()],
-            methods: Some(HttpMethod::GET),
+            methods: Some(RadixHttpMethod::GET),
             hosts: None,
             remote_addrs: None,
             vars: None,
@@ -17,10 +17,10 @@ fn main() -> anyhow::Result<()> {
                 "upstream": "user-service:8001"
             }),
         },
-        Route {
+        RadixNode {
             id: "2".to_string(),
             paths: vec!["/api/user/:id".to_string()],
-            methods: Some(HttpMethod::GET | HttpMethod::PUT | HttpMethod::DELETE),
+            methods: Some(RadixHttpMethod::GET | RadixHttpMethod::PUT | RadixHttpMethod::DELETE),
             hosts: None,
             remote_addrs: None,
             vars: None,
@@ -31,10 +31,10 @@ fn main() -> anyhow::Result<()> {
                 "upstream": "user-service:8001"
             }),
         },
-        Route {
+        RadixNode {
             id: "3".to_string(),
             paths: vec!["/api/user/:id/posts".to_string()],
-            methods: Some(HttpMethod::GET),
+            methods: Some(RadixHttpMethod::GET),
             hosts: None,
             remote_addrs: None,
             vars: None,
@@ -45,7 +45,7 @@ fn main() -> anyhow::Result<()> {
                 "upstream": "post-service:8002"
             }),
         },
-        Route {
+        RadixNode {
             id: "4".to_string(),
             paths: vec!["/admin/*path".to_string()],
             methods: None,
@@ -59,7 +59,7 @@ fn main() -> anyhow::Result<()> {
                 "upstream": "admin-service:8003"
             }),
         },
-        Route {
+        RadixNode {
             id: "5".to_string(),
             paths: vec!["/api/*".to_string()],
             methods: None,
@@ -82,7 +82,7 @@ fn main() -> anyhow::Result<()> {
 
     // Example 1: Exact path match
     {
-        let opts = MatchOpts {
+        let opts = RadixMatchOpts {
             method: Some("GET".to_string()),
             ..Default::default()
         };
@@ -106,7 +106,7 @@ fn main() -> anyhow::Result<()> {
 
     // Example 2: Parameter extraction
     {
-        let opts = MatchOpts {
+        let opts = RadixMatchOpts {
             method: Some("GET".to_string()),
             ..Default::default()
         };
@@ -130,7 +130,7 @@ fn main() -> anyhow::Result<()> {
 
     // Example 3: Multiple parameters
     {
-        let opts = MatchOpts {
+        let opts = RadixMatchOpts {
             method: Some("GET".to_string()),
             ..Default::default()
         };
@@ -154,7 +154,7 @@ fn main() -> anyhow::Result<()> {
 
     // Example 4: Wildcard matching
     {
-        let opts = MatchOpts {
+        let opts = RadixMatchOpts {
             host: Some("admin.example.com".to_string()),
             ..Default::default()
         };
@@ -178,7 +178,7 @@ fn main() -> anyhow::Result<()> {
 
     // Example 5: Wildcard host
     {
-        let opts = MatchOpts {
+        let opts = RadixMatchOpts {
             host: Some("v1.api.example.com".to_string()),
             ..Default::default()
         };
@@ -202,7 +202,7 @@ fn main() -> anyhow::Result<()> {
 
     // Example 6: Method not allowed
     {
-        let opts = MatchOpts {
+        let opts = RadixMatchOpts {
             method: Some("POST".to_string()),
             ..Default::default()
         };
@@ -225,7 +225,7 @@ fn main() -> anyhow::Result<()> {
 
     // Example 7: Multiple methods allowed
     {
-        let opts = MatchOpts {
+        let opts = RadixMatchOpts {
             method: Some("PUT".to_string()),
             ..Default::default()
         };

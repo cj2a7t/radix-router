@@ -1,6 +1,6 @@
 /// Variable expressions and filter functions testing
 /// This example demonstrates advanced routing with custom logic
-use router_radix::{Expr, HttpMethod, MatchOpts, RadixRouter, Route};
+use router_radix::{Expr, RadixHttpMethod, RadixMatchOpts, RadixRouter, RadixNode};
 use regex::Regex;
 use std::collections::HashMap;
 use std::sync::Arc;
@@ -11,10 +11,10 @@ fn main() -> anyhow::Result<()> {
     // Test 1: Basic variable expression matching
     println!("Test 1: Basic Variable Expression (Eq)");
     {
-        let routes = vec![Route {
+        let routes = vec![RadixNode {
             id: "prod_env".to_string(),
             paths: vec!["/api/data".to_string()],
-            methods: Some(HttpMethod::GET),
+            methods: Some(RadixHttpMethod::GET),
             hosts: None,
             remote_addrs: None,
             vars: Some(vec![Expr::Eq("env".to_string(), "production".to_string())]),
@@ -31,7 +31,7 @@ fn main() -> anyhow::Result<()> {
         // Test with correct variable
         let mut vars = HashMap::new();
         vars.insert("env".to_string(), "production".to_string());
-        let opts = MatchOpts {
+        let opts = RadixMatchOpts {
             method: Some("GET".to_string()),
             vars: Some(vars),
             ..Default::default()
@@ -47,7 +47,7 @@ fn main() -> anyhow::Result<()> {
         // Test with incorrect variable
         let mut vars = HashMap::new();
         vars.insert("env".to_string(), "development".to_string());
-        let opts = MatchOpts {
+        let opts = RadixMatchOpts {
             method: Some("GET".to_string()),
             vars: Some(vars),
             ..Default::default()
@@ -62,10 +62,10 @@ fn main() -> anyhow::Result<()> {
     // Test 2: Regex expression matching
     println!("Test 2: Regex Variable Expression");
     {
-        let routes = vec![Route {
+        let routes = vec![RadixNode {
             id: "user_agent_check".to_string(),
             paths: vec!["/api/mobile".to_string()],
-            methods: Some(HttpMethod::GET),
+            methods: Some(RadixHttpMethod::GET),
             hosts: None,
             remote_addrs: None,
             vars: Some(vec![Expr::Regex(
@@ -93,7 +93,7 @@ fn main() -> anyhow::Result<()> {
         for (ua, should_match) in user_agents {
             let mut vars = HashMap::new();
             vars.insert("user_agent".to_string(), ua.to_string());
-            let opts = MatchOpts {
+            let opts = RadixMatchOpts {
                 method: Some("GET".to_string()),
                 vars: Some(vars),
                 ..Default::default()
@@ -123,10 +123,10 @@ fn main() -> anyhow::Result<()> {
     // Test 3: Multiple variable expressions (AND logic)
     println!("Test 3: Multiple Variable Expressions (AND)");
     {
-        let routes = vec![Route {
+        let routes = vec![RadixNode {
             id: "premium_api".to_string(),
             paths: vec!["/api/premium".to_string()],
-            methods: Some(HttpMethod::GET),
+            methods: Some(RadixHttpMethod::GET),
             hosts: None,
             remote_addrs: None,
             vars: Some(vec![
@@ -149,7 +149,7 @@ fn main() -> anyhow::Result<()> {
         vars.insert("tier".to_string(), "premium".to_string());
         vars.insert("region".to_string(), "us-east".to_string());
         vars.insert("api_version".to_string(), "v2".to_string());
-        let opts = MatchOpts {
+        let opts = RadixMatchOpts {
             method: Some("GET".to_string()),
             vars: Some(vars.clone()),
             ..Default::default()
@@ -161,7 +161,7 @@ fn main() -> anyhow::Result<()> {
 
         // Missing one condition
         vars.insert("tier".to_string(), "free".to_string());
-        let opts = MatchOpts {
+        let opts = RadixMatchOpts {
             method: Some("GET".to_string()),
             vars: Some(vars),
             ..Default::default()
@@ -178,7 +178,7 @@ fn main() -> anyhow::Result<()> {
     {
         // Filter function that checks if request time is within business hours
         let business_hours_filter: Arc<
-            dyn Fn(&HashMap<String, String>, &MatchOpts) -> bool + Send + Sync,
+            dyn Fn(&HashMap<String, String>, &RadixMatchOpts) -> bool + Send + Sync,
         > = Arc::new(|vars, _opts| {
             if let Some(hour) = vars.get("hour") {
                 if let Ok(h) = hour.parse::<u32>() {
@@ -188,10 +188,10 @@ fn main() -> anyhow::Result<()> {
             false
         });
 
-        let routes = vec![Route {
+        let routes = vec![RadixNode {
             id: "business_hours".to_string(),
             paths: vec!["/api/support".to_string()],
-            methods: Some(HttpMethod::GET),
+            methods: Some(RadixHttpMethod::GET),
             hosts: None,
             remote_addrs: None,
             vars: None,
@@ -217,7 +217,7 @@ fn main() -> anyhow::Result<()> {
         for (hour, should_match, desc) in test_hours {
             let mut vars = HashMap::new();
             vars.insert("hour".to_string(), hour.to_string());
-            let opts = MatchOpts {
+            let opts = RadixMatchOpts {
                 method: Some("GET".to_string()),
                 vars: Some(vars),
                 ..Default::default()
@@ -243,7 +243,7 @@ fn main() -> anyhow::Result<()> {
     {
         // Simple rate limiter: allow if request_count < 100
         let rate_limit_filter: Arc<
-            dyn Fn(&HashMap<String, String>, &MatchOpts) -> bool + Send + Sync,
+            dyn Fn(&HashMap<String, String>, &RadixMatchOpts) -> bool + Send + Sync,
         > = Arc::new(|vars, _opts| {
             if let Some(count) = vars.get("request_count") {
                 if let Ok(c) = count.parse::<u32>() {
@@ -253,10 +253,10 @@ fn main() -> anyhow::Result<()> {
             false
         });
 
-        let routes = vec![Route {
+        let routes = vec![RadixNode {
             id: "rate_limited".to_string(),
             paths: vec!["/api/limited".to_string()],
-            methods: Some(HttpMethod::GET),
+            methods: Some(RadixHttpMethod::GET),
             hosts: None,
             remote_addrs: None,
             vars: None,
@@ -275,7 +275,7 @@ fn main() -> anyhow::Result<()> {
         for count in test_counts {
             let mut vars = HashMap::new();
             vars.insert("request_count".to_string(), count.to_string());
-            let opts = MatchOpts {
+            let opts = RadixMatchOpts {
                 method: Some("GET".to_string()),
                 vars: Some(vars),
                 ..Default::default()
@@ -296,7 +296,7 @@ fn main() -> anyhow::Result<()> {
     println!("Test 6: IP-Based Access Control");
     {
         // Filter to allow only internal IPs
-        let ip_filter: Arc<dyn Fn(&HashMap<String, String>, &MatchOpts) -> bool + Send + Sync> =
+        let ip_filter: Arc<dyn Fn(&HashMap<String, String>, &RadixMatchOpts) -> bool + Send + Sync> =
             Arc::new(|vars, _opts| {
                 if let Some(ip) = vars.get("client_ip") {
                     return ip.starts_with("10.") || ip.starts_with("192.168.");
@@ -304,7 +304,7 @@ fn main() -> anyhow::Result<()> {
                 false
             });
 
-        let routes = vec![Route {
+        let routes = vec![RadixNode {
             id: "internal_api".to_string(),
             paths: vec!["/internal/api".to_string()],
             methods: None,
@@ -331,7 +331,7 @@ fn main() -> anyhow::Result<()> {
         for (ip, should_match, desc) in test_ips {
             let mut vars = HashMap::new();
             vars.insert("client_ip".to_string(), ip.to_string());
-            let opts = MatchOpts {
+            let opts = RadixMatchOpts {
                 vars: Some(vars),
                 ..Default::default()
             };
@@ -353,7 +353,7 @@ fn main() -> anyhow::Result<()> {
     println!("Test 7: A/B Testing Router");
     {
         // Route 50% to version A, 50% to version B
-        let ab_test_a: Arc<dyn Fn(&HashMap<String, String>, &MatchOpts) -> bool + Send + Sync> =
+        let ab_test_a: Arc<dyn Fn(&HashMap<String, String>, &RadixMatchOpts) -> bool + Send + Sync> =
             Arc::new(|vars, _opts| {
                 if let Some(user_id) = vars.get("user_id") {
                     if let Ok(id) = user_id.parse::<u64>() {
@@ -363,7 +363,7 @@ fn main() -> anyhow::Result<()> {
                 false
             });
 
-        let ab_test_b: Arc<dyn Fn(&HashMap<String, String>, &MatchOpts) -> bool + Send + Sync> =
+        let ab_test_b: Arc<dyn Fn(&HashMap<String, String>, &RadixMatchOpts) -> bool + Send + Sync> =
             Arc::new(|vars, _opts| {
                 if let Some(user_id) = vars.get("user_id") {
                     if let Ok(id) = user_id.parse::<u64>() {
@@ -374,10 +374,10 @@ fn main() -> anyhow::Result<()> {
             });
 
         let routes = vec![
-            Route {
+            RadixNode {
                 id: "version_a".to_string(),
                 paths: vec!["/api/feature".to_string()],
-                methods: Some(HttpMethod::GET),
+                methods: Some(RadixHttpMethod::GET),
                 hosts: None,
                 remote_addrs: None,
                 vars: None,
@@ -388,10 +388,10 @@ fn main() -> anyhow::Result<()> {
                     "version": "A"
                 }),
             },
-            Route {
+            RadixNode {
                 id: "version_b".to_string(),
                 paths: vec!["/api/feature".to_string()],
-                methods: Some(HttpMethod::GET),
+                methods: Some(RadixHttpMethod::GET),
                 hosts: None,
                 remote_addrs: None,
                 vars: None,
@@ -409,7 +409,7 @@ fn main() -> anyhow::Result<()> {
         for user_id in 1..=10 {
             let mut vars = HashMap::new();
             vars.insert("user_id".to_string(), user_id.to_string());
-            let opts = MatchOpts {
+            let opts = RadixMatchOpts {
                 method: Some("GET".to_string()),
                 vars: Some(vars),
                 ..Default::default()
@@ -430,7 +430,7 @@ fn main() -> anyhow::Result<()> {
     {
         // Combine variable expression with custom filter
         let combined_filter: Arc<
-            dyn Fn(&HashMap<String, String>, &MatchOpts) -> bool + Send + Sync,
+            dyn Fn(&HashMap<String, String>, &RadixMatchOpts) -> bool + Send + Sync,
         > = Arc::new(|vars, _opts| {
             // Additional check: must have valid session
             vars.get("session_valid")
@@ -438,10 +438,10 @@ fn main() -> anyhow::Result<()> {
                 .unwrap_or(false)
         });
 
-        let routes = vec![Route {
+        let routes = vec![RadixNode {
             id: "secure_api".to_string(),
             paths: vec!["/api/secure".to_string()],
-            methods: Some(HttpMethod::POST),
+            methods: Some(RadixHttpMethod::POST),
             hosts: None,
             remote_addrs: None,
             vars: Some(vec![
@@ -463,7 +463,7 @@ fn main() -> anyhow::Result<()> {
         vars.insert("auth_level".to_string(), "admin".to_string());
         vars.insert("token".to_string(), "Bearer abc123xyz".to_string());
         vars.insert("session_valid".to_string(), "true".to_string());
-        let opts = MatchOpts {
+        let opts = RadixMatchOpts {
             method: Some("POST".to_string()),
             vars: Some(vars),
             ..Default::default()
@@ -478,7 +478,7 @@ fn main() -> anyhow::Result<()> {
         vars.insert("auth_level".to_string(), "admin".to_string());
         vars.insert("token".to_string(), "Bearer abc123xyz".to_string());
         vars.insert("session_valid".to_string(), "false".to_string());
-        let opts = MatchOpts {
+        let opts = RadixMatchOpts {
             method: Some("POST".to_string()),
             vars: Some(vars),
             ..Default::default()

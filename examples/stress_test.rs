@@ -1,6 +1,6 @@
 /// Stress test with large number of routes and concurrent operations
 /// This example tests router behavior under heavy load
-use router_radix::{HttpMethod, MatchOpts, RadixRouter, Route};
+use router_radix::{RadixHttpMethod, RadixMatchOpts, RadixRouter, RadixNode};
 use std::sync::Arc;
 use std::thread;
 use std::time::Instant;
@@ -26,10 +26,10 @@ fn main() -> anyhow::Result<()> {
             _ => format!("/api/complex/{}/resource/:rid", i),
         };
 
-        routes.push(Route {
+        routes.push(RadixNode {
             id: format!("route_{}", i),
             paths: vec![path],
-            methods: Some(HttpMethod::GET | HttpMethod::POST),
+            methods: Some(RadixHttpMethod::GET | RadixHttpMethod::POST),
             hosts: None,
             remote_addrs: None,
             vars: None,
@@ -64,7 +64,7 @@ fn main() -> anyhow::Result<()> {
         ("/api/nonexistent/path", "no match"),
     ];
 
-    let opts = MatchOpts {
+    let opts = RadixMatchOpts {
         method: Some("GET".to_string()),
         ..Default::default()
     };
@@ -101,7 +101,7 @@ fn main() -> anyhow::Result<()> {
         let router_clone = Arc::clone(&router);
 
         let handle = thread::spawn(move || {
-            let opts = MatchOpts {
+            let opts = RadixMatchOpts {
                 method: Some("GET".to_string()),
                 ..Default::default()
             };
@@ -147,10 +147,10 @@ fn main() -> anyhow::Result<()> {
     let mut added_routes = Vec::new();
 
     for i in 0..1000 {
-        let route = Route {
+        let route = RadixNode {
             id: format!("dynamic_{}", i),
             paths: vec![format!("/dynamic/route/{}", i)],
-            methods: Some(HttpMethod::GET),
+            methods: Some(RadixHttpMethod::GET),
             hosts: None,
             remote_addrs: None,
             vars: None,
@@ -171,7 +171,7 @@ fn main() -> anyhow::Result<()> {
     );
 
     // Verify routes work
-    let opts = MatchOpts {
+    let opts = RadixMatchOpts {
         method: Some("GET".to_string()),
         ..Default::default()
     };
@@ -211,7 +211,7 @@ fn main() -> anyhow::Result<()> {
             .join("/");
         let full_path = format!("/{}", deep_path);
 
-        let routes = vec![Route {
+        let routes = vec![RadixNode {
             id: "deep".to_string(),
             paths: vec![full_path.clone()],
             methods: None,
@@ -224,7 +224,7 @@ fn main() -> anyhow::Result<()> {
         }];
 
         let router = RadixRouter::new(routes)?;
-        let opts = MatchOpts::default();
+        let opts = RadixMatchOpts::default();
 
         let start = Instant::now();
         for _ in 0..10_000 {
@@ -244,7 +244,7 @@ fn main() -> anyhow::Result<()> {
         let param_path = format!("/{}", param_parts.join("/"));
         let test_path = "/a/b/c/d/e/f/g/h/i/j";
 
-        let routes = vec![Route {
+        let routes = vec![RadixNode {
             id: "params".to_string(),
             paths: vec![param_path],
             methods: None,
@@ -257,7 +257,7 @@ fn main() -> anyhow::Result<()> {
         }];
 
         let router = RadixRouter::new(routes)?;
-        let opts = MatchOpts::default();
+        let opts = RadixMatchOpts::default();
 
         let start = Instant::now();
         for _ in 0..10_000 {
@@ -276,7 +276,7 @@ fn main() -> anyhow::Result<()> {
         let long_segment = "a".repeat(100);
         let long_path = format!("/{}/{}/{}", long_segment, long_segment, long_segment);
 
-        let routes = vec![Route {
+        let routes = vec![RadixNode {
             id: "long".to_string(),
             paths: vec![long_path.clone()],
             methods: None,
@@ -289,7 +289,7 @@ fn main() -> anyhow::Result<()> {
         }];
 
         let router = RadixRouter::new(routes)?;
-        let opts = MatchOpts::default();
+        let opts = RadixMatchOpts::default();
 
         let start = Instant::now();
         for _ in 0..10_000 {

@@ -78,15 +78,15 @@ Add to your `Cargo.toml`:
 ### Hello Router
 
 ```rust
-use router_radix::{RadixRouter, Route, HttpMethod, MatchOpts};
+use router_radix::{RadixRouter, RadixNode, RadixHttpMethod, RadixMatchOpts};
 
 fn main() -> anyhow::Result<()> {
     // Create routes
     let routes = vec![
-        Route {
+        RadixNode {
             id: "get_users".to_string(),
             paths: vec!["/api/users".to_string()],
-            methods: Some(HttpMethod::GET),
+            methods: Some(RadixHttpMethod::GET),
             hosts: None,
             remote_addrs: None,
             vars: None,
@@ -100,7 +100,7 @@ fn main() -> anyhow::Result<()> {
     let router = RadixRouter::new(routes)?;
 
     // Match a request
-    let opts = MatchOpts {
+    let opts = RadixMatchOpts {
         method: Some("GET".to_string()),
         ..Default::default()
     };
@@ -124,7 +124,7 @@ Match exact paths:
 
 ```rust
 let routes = vec![
-    Route {
+    RadixNode {
         id: "home".to_string(),
         paths: vec!["/".to_string()],
         methods: None,
@@ -138,7 +138,7 @@ let routes = vec![
 ];
 
 let router = RadixRouter::new(routes)?;
-let result = router.match_route("/", &MatchOpts::default())?;
+let result = router.match_route("/", &RadixMatchOpts::default())?;
 ```
 
 ### Path Parameters
@@ -147,7 +147,7 @@ Extract dynamic segments from paths:
 
 ```rust
 let routes = vec![
-    Route {
+    RadixNode {
         id: "user_detail".to_string(),
         paths: vec!["/user/:id/post/:pid".to_string()],
         // ... other fields
@@ -156,7 +156,7 @@ let routes = vec![
 ];
 
 let router = RadixRouter::new(routes)?;
-let result = router.match_route("/user/123/post/456", &MatchOpts::default())?
+let result = router.match_route("/user/123/post/456", &RadixMatchOpts::default())?
     .expect("should match");
 
 assert_eq!(result.matched.get("id").unwrap(), "123");
@@ -169,7 +169,7 @@ Match remaining path segments:
 
 ```rust
 let routes = vec![
-    Route {
+    RadixNode {
         id: "static_files".to_string(),
         paths: vec!["/files/*path".to_string()],
         // ... other fields
@@ -178,7 +178,7 @@ let routes = vec![
 ];
 
 let router = RadixRouter::new(routes)?;
-let result = router.match_route("/files/css/main.css", &MatchOpts::default())?
+let result = router.match_route("/files/css/main.css", &RadixMatchOpts::default())?
     .expect("should match");
 
 assert_eq!(result.matched.get("path").unwrap(), "css/main.css");
@@ -190,10 +190,10 @@ Match specific HTTP methods:
 
 ```rust
 let routes = vec![
-    Route {
+    RadixNode {
         id: "users_api".to_string(),
         paths: vec!["/api/users".to_string()],
-        methods: Some(HttpMethod::GET | HttpMethod::POST), // Multiple methods
+        methods: Some(RadixHttpMethod::GET | RadixHttpMethod::POST), // Multiple methods
         // ... other fields
         metadata: serde_json::json!({"handler": "users"}),
     },
@@ -202,14 +202,14 @@ let routes = vec![
 let router = RadixRouter::new(routes)?;
 
 // GET - matches
-let opts = MatchOpts {
+let opts = RadixMatchOpts {
     method: Some("GET".to_string()),
     ..Default::default()
 };
 assert!(router.match_route("/api/users", &opts)?.is_some());
 
 // DELETE - doesn't match
-let opts = MatchOpts {
+let opts = RadixMatchOpts {
     method: Some("DELETE".to_string()),
     ..Default::default()
 };
@@ -222,7 +222,7 @@ Route based on hostname with wildcard support:
 
 ```rust
 let routes = vec![
-    Route {
+    RadixNode {
         id: "api_subdomain".to_string(),
         paths: vec!["/api".to_string()],
         methods: None,
@@ -234,7 +234,7 @@ let routes = vec![
 
 let router = RadixRouter::new(routes)?;
 
-let opts = MatchOpts {
+let opts = RadixMatchOpts {
     host: Some("api.example.com".to_string()),
     ..Default::default()
 };
@@ -247,14 +247,14 @@ Higher priority routes are matched first:
 
 ```rust
 let routes = vec![
-    Route {
+    RadixNode {
         id: "catch_all".to_string(),
         paths: vec!["/api/*".to_string()],
         priority: 0, // Lower priority
         metadata: serde_json::json!({"handler": "fallback"}),
         // ... other fields
     },
-    Route {
+    RadixNode {
         id: "specific".to_string(),
         paths: vec!["/api/users".to_string()],
         priority: 10, // Higher priority - matches first
@@ -264,7 +264,7 @@ let routes = vec![
 ];
 
 let router = RadixRouter::new(routes)?;
-let result = router.match_route("/api/users", &MatchOpts::default())?
+let result = router.match_route("/api/users", &RadixMatchOpts::default())?
     .expect("should match");
 
 assert_eq!(result.metadata["handler"], "users"); // Higher priority wins
@@ -281,7 +281,7 @@ use std::sync::Arc;
 use std::collections::HashMap;
 
 let routes = vec![
-    Route {
+    RadixNode {
         id: "v2_api".to_string(),
         paths: vec!["/api/data".to_string()],
         filter_fn: Some(Arc::new(|vars, _opts| {
@@ -298,14 +298,14 @@ let router = RadixRouter::new(routes)?;
 // With version variable - matches
 let mut vars = HashMap::new();
 vars.insert("version".to_string(), "v2".to_string());
-let opts = MatchOpts {
+let opts = RadixMatchOpts {
     vars: Some(vars),
     ..Default::default()
 };
 assert!(router.match_route("/api/data", &opts)?.is_some());
 
 // Without version - doesn't match
-assert!(router.match_route("/api/data", &MatchOpts::default())?.is_none());
+assert!(router.match_route("/api/data", &RadixMatchOpts::default())?.is_none());
 ```
 
 #### Variable Expressions
@@ -317,7 +317,7 @@ use router_radix::Expr;
 use regex::Regex;
 
 let routes = vec![
-    Route {
+    RadixNode {
         id: "prod_api".to_string(),
         paths: vec!["/api/users".to_string()],
         vars: Some(vec![
@@ -335,7 +335,7 @@ let mut vars = HashMap::new();
 vars.insert("env".to_string(), "production".to_string());
 vars.insert("user_agent".to_string(), "Chrome/120.0".to_string());
 
-let opts = MatchOpts {
+let opts = RadixMatchOpts {
     vars: Some(vars),
     ..Default::default()
 };
@@ -349,11 +349,11 @@ assert!(router.match_route("/api/users", &opts)?.is_some());
 The router uses `anyhow::Result` for proper error handling:
 
 ```rust
-use router_radix::{RadixRouter, MatchOpts};
+use router_radix::{RadixRouter, RadixMatchOpts};
 use anyhow::Context;
 
 fn handle_request(router: &RadixRouter, path: &str) -> anyhow::Result<String> {
-    let opts = MatchOpts::default();
+    let opts = RadixMatchOpts::default();
     
     match router.match_route(path, &opts)? {
         Some(result) => {
@@ -400,7 +400,7 @@ fn main() -> anyhow::Result<()> {
     for i in 0..8 {
         let router = Arc::clone(&router);
         handles.push(thread::spawn(move || {
-            let opts = MatchOpts {
+            let opts = RadixMatchOpts {
                 method: Some("GET".to_string()),
                 ..Default::default()
             };
@@ -538,8 +538,8 @@ cargo test
 ### Key Components
 
 - **`RadixRouter`**: Main router struct with thread-safe API
-- **`Route`**: Route definition with matching rules
-- **`MatchOpts`**: Request matching options
+- **`RadixNode`**: Route node definition with matching rules
+- **`RadixMatchOpts`**: Request matching options
 - **`MatchResult`**: Matched route with extracted parameters
 - **`Expr`**: Variable expression for conditional matching
 - **`FilterFn`**: Custom filter function type

@@ -322,7 +322,7 @@ echo "=== All Tests Completed Successfully! ==="
 /// 测试描述
 /// 这个示例测试...
 
-use router-radix::{HttpMethod, MatchOpts, RadixRouter, Route};
+use router-radix::{RadixHttpMethod, RadixMatchOpts, RadixRouter, RadixNode};
 
 fn main() -> anyhow::Result<()> {
     println!("=== Your Test Name ===\n");
@@ -338,7 +338,7 @@ fn main() -> anyhow::Result<()> {
     println!("Test 1: Description");
     {
         // 测试逻辑
-        let opts = MatchOpts::default();
+        let opts = RadixMatchOpts::default();
         let result = router.match_route("/path", &opts)?;
         assert!(result.is_some());
         println!("  ✓ Test passed");

@@ -28,7 +28,7 @@ pub struct RadixRouter {
 
 impl RadixRouter {
     /// Create a new router with routes
-    pub fn new(routes: Vec<Route>) -> Result<Self> {
+    pub fn new(routes: Vec<RadixNode>) -> Result<Self> {
         let mut router = Self {
             tree: RwLock::new(RadixTreeRaw::new().context("Failed to create radix tree")?),
             match_data: HashMap::new(),
@@ -45,7 +45,7 @@ impl RadixRouter {
     }
 
     /// Add a single route to the router
-    pub fn add_route(&mut self, route: Route) -> Result<()> {
+    pub fn add_route(&mut self, route: RadixNode) -> Result<()> {
         for path in &route.paths {
             self.insert_route(path, &route)?;
         }
@@ -53,7 +53,7 @@ impl RadixRouter {
     }
 
     /// Insert a route with specific path
-    fn insert_route(&mut self, path: &str, route: &Route) -> Result<()> {
+    fn insert_route(&mut self, path: &str, route: &RadixNode) -> Result<()> {
         // Process route data
         let route_opts = self.process_route(path, route)?;
 
@@ -100,9 +100,9 @@ impl RadixRouter {
     }
 
     /// Process route data
-    fn process_route(&self, path: &str, route: &Route) -> Result<RouteOpts> {
+    fn process_route(&self, path: &str, route: &RadixNode) -> Result<RouteOpts> {
         // Process HTTP methods
-        let methods = route.methods.unwrap_or(HttpMethod::empty());
+        let methods = route.methods.unwrap_or(RadixHttpMethod::empty());
 
         // Process hosts
         let hosts = route
@@ -169,7 +169,7 @@ impl RadixRouter {
     /// - `Ok(Some(MatchResult))` - Found a matching route
     /// - `Ok(None)` - No matching route found
     /// - `Err(_)` - System error (e.g., RwLock poisoned)
-    pub fn match_route(&self, path: &str, opts: &MatchOpts) -> Result<Option<MatchResult>> {
+    pub fn match_route(&self, path: &str, opts: &RadixMatchOpts) -> Result<Option<MatchResult>> {
         // Normalize host to lowercase if present
         let normalized_opts = if let Some(host) = &opts.host {
             let mut new_opts = opts.clone();
@@ -236,13 +236,13 @@ impl RadixRouter {
         &self,
         route: &RouteOpts,
         path: &str,
-        opts: &MatchOpts,
+        opts: &RadixMatchOpts,
         matched: &mut HashMap<String, String>,
     ) -> bool {
         // 1. HTTP method matching
         if !route.methods.is_empty() {
             if let Some(method) = &opts.method {
-                if let Some(m) = HttpMethod::from_str(method) {
+                if let Some(m) = RadixHttpMethod::from_str(method) {
                     if !route.methods.contains(m) {
                         return false;
                     }
@@ -390,7 +390,7 @@ impl RadixRouter {
     }
 
     /// Update an existing route
-    pub fn update_route(&mut self, old_route: Route, new_route: Route) -> Result<()> {
+    pub fn update_route(&mut self, old_route: RadixNode, new_route: RadixNode) -> Result<()> {
         // Remove old route
         self.delete_route(old_route)?;
         // Add new route
@@ -399,7 +399,7 @@ impl RadixRouter {
     }
 
     /// Delete a route
-    pub fn delete_route(&mut self, route: Route) -> Result<()> {
+    pub fn delete_route(&mut self, route: RadixNode) -> Result<()> {
         for path in &route.paths {
             self.remove_route(path, &route)?;
         }
@@ -407,7 +407,7 @@ impl RadixRouter {
     }
 
     /// Remove a specific route from a path
-    fn remove_route(&mut self, path: &str, route: &Route) -> Result<()> {
+    fn remove_route(&mut self, path: &str, route: &RadixNode) -> Result<()> {
         let route_opts = self.process_route(path, route)?;
 
         // Check hash_path first (for exact match routes)

@@ -1,6 +1,6 @@
 /// Performance benchmarks for different routing scenarios
 /// This example measures and compares performance across various route types and patterns
-use router_radix::{HttpMethod, MatchOpts, RadixRouter, Route};
+use router_radix::{RadixHttpMethod, RadixMatchOpts, RadixRouter, RadixNode};
 use std::time::Instant;
 
 fn benchmark(name: &str, iterations: usize, f: impl Fn()) {
@@ -28,7 +28,7 @@ fn main() -> anyhow::Result<()> {
     println!("Benchmark 1: Exact Path Matching");
     {
         let routes = vec![
-            Route {
+            RadixNode {
                 id: "1".to_string(),
                 paths: vec!["/api/users".to_string()],
                 methods: None,
@@ -39,7 +39,7 @@ fn main() -> anyhow::Result<()> {
                 priority: 0,
                 metadata: serde_json::json!({"id": 1}),
             },
-            Route {
+            RadixNode {
                 id: "2".to_string(),
                 paths: vec!["/api/posts".to_string()],
                 methods: None,
@@ -50,7 +50,7 @@ fn main() -> anyhow::Result<()> {
                 priority: 0,
                 metadata: serde_json::json!({"id": 2}),
             },
-            Route {
+            RadixNode {
                 id: "3".to_string(),
                 paths: vec!["/api/comments".to_string()],
                 methods: None,
@@ -64,7 +64,7 @@ fn main() -> anyhow::Result<()> {
         ];
 
         let router = RadixRouter::new(routes)?;
-        let opts = MatchOpts::default();
+        let opts = RadixMatchOpts::default();
 
         benchmark("Exact match (hash lookup)", iterations, || {
             let _ = router.match_route("/api/users", &opts).ok();
@@ -75,7 +75,7 @@ fn main() -> anyhow::Result<()> {
     // Benchmark 2: Single parameter extraction
     println!("Benchmark 2: Parameter Extraction");
     {
-        let routes = vec![Route {
+        let routes = vec![RadixNode {
             id: "param".to_string(),
             paths: vec!["/api/user/:id".to_string()],
             methods: None,
@@ -88,7 +88,7 @@ fn main() -> anyhow::Result<()> {
         }];
 
         let router = RadixRouter::new(routes)?;
-        let opts = MatchOpts::default();
+        let opts = RadixMatchOpts::default();
 
         benchmark("Single parameter", iterations, || {
             let _ = router.match_route("/api/user/12345", &opts).ok();
@@ -99,7 +99,7 @@ fn main() -> anyhow::Result<()> {
     // Benchmark 3: Multiple parameters
     println!("Benchmark 3: Multiple Parameters");
     {
-        let routes = vec![Route {
+        let routes = vec![RadixNode {
             id: "multi_param".to_string(),
             paths: vec!["/api/user/:uid/post/:pid/comment/:cid".to_string()],
             methods: None,
@@ -112,7 +112,7 @@ fn main() -> anyhow::Result<()> {
         }];
 
         let router = RadixRouter::new(routes)?;
-        let opts = MatchOpts::default();
+        let opts = RadixMatchOpts::default();
 
         benchmark("Three parameters", iterations, || {
             let _ = router
@@ -125,7 +125,7 @@ fn main() -> anyhow::Result<()> {
     // Benchmark 4: Wildcard matching
     println!("Benchmark 4: Wildcard Matching");
     {
-        let routes = vec![Route {
+        let routes = vec![RadixNode {
             id: "wildcard".to_string(),
             paths: vec!["/files/*path".to_string()],
             methods: None,
@@ -138,7 +138,7 @@ fn main() -> anyhow::Result<()> {
         }];
 
         let router = RadixRouter::new(routes)?;
-        let opts = MatchOpts::default();
+        let opts = RadixMatchOpts::default();
 
         benchmark("Short wildcard path", iterations, || {
             let _ = router.match_route("/files/doc.pdf", &opts).ok();
@@ -155,10 +155,10 @@ fn main() -> anyhow::Result<()> {
     // Benchmark 5: HTTP method matching
     println!("Benchmark 5: HTTP Method Matching");
     {
-        let routes = vec![Route {
+        let routes = vec![RadixNode {
             id: "method".to_string(),
             paths: vec!["/api/users".to_string()],
-            methods: Some(HttpMethod::GET | HttpMethod::POST | HttpMethod::PUT),
+            methods: Some(RadixHttpMethod::GET | RadixHttpMethod::POST | RadixHttpMethod::PUT),
             hosts: None,
             remote_addrs: None,
             vars: None,
@@ -169,7 +169,7 @@ fn main() -> anyhow::Result<()> {
 
         let router = RadixRouter::new(routes)?;
 
-        let opts_get = MatchOpts {
+        let opts_get = RadixMatchOpts {
             method: Some("GET".to_string()),
             ..Default::default()
         };
@@ -178,7 +178,7 @@ fn main() -> anyhow::Result<()> {
             let _ = router.match_route("/api/users", &opts_get).ok();
         });
 
-        let opts_delete = MatchOpts {
+        let opts_delete = RadixMatchOpts {
             method: Some("DELETE".to_string()),
             ..Default::default()
         };
@@ -192,7 +192,7 @@ fn main() -> anyhow::Result<()> {
     // Benchmark 6: Host matching
     println!("Benchmark 6: Host Matching");
     {
-        let routes = vec![Route {
+        let routes = vec![RadixNode {
             id: "host".to_string(),
             paths: vec!["/api".to_string()],
             methods: None,
@@ -206,7 +206,7 @@ fn main() -> anyhow::Result<()> {
 
         let router = RadixRouter::new(routes)?;
 
-        let opts = MatchOpts {
+        let opts = RadixMatchOpts {
             host: Some("api.example.com".to_string()),
             ..Default::default()
         };
@@ -220,7 +220,7 @@ fn main() -> anyhow::Result<()> {
     // Benchmark 7: Wildcard host matching
     println!("Benchmark 7: Wildcard Host Matching");
     {
-        let routes = vec![Route {
+        let routes = vec![RadixNode {
             id: "wildcard_host".to_string(),
             paths: vec!["/api".to_string()],
             methods: None,
@@ -234,7 +234,7 @@ fn main() -> anyhow::Result<()> {
 
         let router = RadixRouter::new(routes)?;
 
-        let opts = MatchOpts {
+        let opts = RadixMatchOpts {
             host: Some("api.example.com".to_string()),
             ..Default::default()
         };
@@ -249,7 +249,7 @@ fn main() -> anyhow::Result<()> {
     println!("Benchmark 8: Priority-Based Routing");
     {
         let routes = vec![
-            Route {
+            RadixNode {
                 id: "low".to_string(),
                 paths: vec!["/api/*".to_string()],
                 methods: None,
@@ -260,7 +260,7 @@ fn main() -> anyhow::Result<()> {
                 priority: 0,
                 metadata: serde_json::json!({"priority": "low"}),
             },
-            Route {
+            RadixNode {
                 id: "medium".to_string(),
                 paths: vec!["/api/users".to_string()],
                 methods: None,
@@ -271,10 +271,10 @@ fn main() -> anyhow::Result<()> {
                 priority: 5,
                 metadata: serde_json::json!({"priority": "medium"}),
             },
-            Route {
+            RadixNode {
                 id: "high".to_string(),
                 paths: vec!["/api/users".to_string()],
-                methods: Some(HttpMethod::GET),
+                methods: Some(RadixHttpMethod::GET),
                 hosts: None,
                 remote_addrs: None,
                 vars: None,
@@ -286,7 +286,7 @@ fn main() -> anyhow::Result<()> {
 
         let router = RadixRouter::new(routes)?;
 
-        let opts = MatchOpts {
+        let opts = RadixMatchOpts {
             method: Some("GET".to_string()),
             ..Default::default()
         };
@@ -302,7 +302,7 @@ fn main() -> anyhow::Result<()> {
     {
         let mut routes = Vec::new();
         for i in 0..100 {
-            routes.push(Route {
+            routes.push(RadixNode {
                 id: format!("route_{}", i),
                 paths: vec![format!("/api/endpoint_{}", i)],
                 methods: None,
@@ -316,7 +316,7 @@ fn main() -> anyhow::Result<()> {
         }
 
         let router = RadixRouter::new(routes)?;
-        let opts = MatchOpts::default();
+        let opts = RadixMatchOpts::default();
 
         benchmark("Match first route (100 total)", iterations, || {
             let _ = router.match_route("/api/endpoint_0", &opts).ok();
@@ -340,10 +340,10 @@ fn main() -> anyhow::Result<()> {
     println!("Benchmark 10: Complex Real-World Scenario");
     {
         let routes = vec![
-            Route {
+            RadixNode {
                 id: "api_users".to_string(),
                 paths: vec!["/api/v1/users".to_string()],
-                methods: Some(HttpMethod::GET | HttpMethod::POST),
+                methods: Some(RadixHttpMethod::GET | RadixHttpMethod::POST),
                 hosts: Some(vec!["api.example.com".to_string()]),
                 remote_addrs: None,
                 vars: None,
@@ -351,10 +351,10 @@ fn main() -> anyhow::Result<()> {
                 priority: 10,
                 metadata: serde_json::json!({"handler": "users"}),
             },
-            Route {
+            RadixNode {
                 id: "api_user_detail".to_string(),
                 paths: vec!["/api/v1/user/:id".to_string()],
-                methods: Some(HttpMethod::GET | HttpMethod::PUT | HttpMethod::DELETE),
+                methods: Some(RadixHttpMethod::GET | RadixHttpMethod::PUT | RadixHttpMethod::DELETE),
                 hosts: Some(vec!["api.example.com".to_string()]),
                 remote_addrs: None,
                 vars: None,
@@ -362,7 +362,7 @@ fn main() -> anyhow::Result<()> {
                 priority: 10,
                 metadata: serde_json::json!({"handler": "user_detail"}),
             },
-            Route {
+            RadixNode {
                 id: "static_files".to_string(),
                 paths: vec!["/static/*path".to_string()],
                 methods: None,
@@ -377,7 +377,7 @@ fn main() -> anyhow::Result<()> {
 
         let router = RadixRouter::new(routes)?;
 
-        let opts = MatchOpts {
+        let opts = RadixMatchOpts {
             method: Some("GET".to_string()),
             host: Some("api.example.com".to_string()),
             ..Default::default()
@@ -391,7 +391,7 @@ fn main() -> anyhow::Result<()> {
             let _ = router.match_route("/api/v1/user/12345", &opts).ok();
         });
 
-        let opts_static = MatchOpts::default();
+        let opts_static = RadixMatchOpts::default();
         benchmark("Complex: wildcard (no constraints)", iterations, || {
             let _ = router
                 .match_route("/static/css/main.css", &opts_static)

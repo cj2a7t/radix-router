@@ -6,7 +6,7 @@ use std::{collections::HashMap, sync::Arc};
 bitflags! {
     /// HTTP methods represented as bit flags
     #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
-    pub struct HttpMethod: u16 {
+    pub struct RadixHttpMethod: u16 {
         const GET     = 1 << 0;
         const POST    = 1 << 1;
         const PUT     = 1 << 2;
@@ -20,27 +20,27 @@ bitflags! {
     }
 }
 
-impl HttpMethod {
+impl RadixHttpMethod {
     /// Parse HTTP method from string
     pub fn from_str(s: &str) -> Option<Self> {
         match s.to_uppercase().as_str() {
-            "GET" => Some(HttpMethod::GET),
-            "POST" => Some(HttpMethod::POST),
-            "PUT" => Some(HttpMethod::PUT),
-            "DELETE" => Some(HttpMethod::DELETE),
-            "PATCH" => Some(HttpMethod::PATCH),
-            "HEAD" => Some(HttpMethod::HEAD),
-            "OPTIONS" => Some(HttpMethod::OPTIONS),
-            "CONNECT" => Some(HttpMethod::CONNECT),
-            "TRACE" => Some(HttpMethod::TRACE),
-            "PURGE" => Some(HttpMethod::PURGE),
+            "GET" => Some(RadixHttpMethod::GET),
+            "POST" => Some(RadixHttpMethod::POST),
+            "PUT" => Some(RadixHttpMethod::PUT),
+            "DELETE" => Some(RadixHttpMethod::DELETE),
+            "PATCH" => Some(RadixHttpMethod::PATCH),
+            "HEAD" => Some(RadixHttpMethod::HEAD),
+            "OPTIONS" => Some(RadixHttpMethod::OPTIONS),
+            "CONNECT" => Some(RadixHttpMethod::CONNECT),
+            "TRACE" => Some(RadixHttpMethod::TRACE),
+            "PURGE" => Some(RadixHttpMethod::PURGE),
             _ => None,
         }
     }
 
     /// Parse multiple HTTP methods from slice
     pub fn from_slice(methods: &[&str]) -> Self {
-        let mut result = HttpMethod::empty();
+        let mut result = RadixHttpMethod::empty();
         for method in methods {
             if let Some(m) = Self::from_str(method) {
                 result |= m;
@@ -132,17 +132,17 @@ impl Expr {
 }
 
 /// Filter function type
-pub type FilterFn = Arc<dyn Fn(&HashMap<String, String>, &MatchOpts) -> bool + Send + Sync>;
+pub type FilterFn = Arc<dyn Fn(&HashMap<String, String>, &RadixMatchOpts) -> bool + Send + Sync>;
 
-/// Route definition
+/// RadixNode definition - represents a route node in the radix tree
 #[derive(Clone)]
-pub struct Route {
+pub struct RadixNode {
     /// Unique route ID
     pub id: String,
     /// Path(s) for this route
     pub paths: Vec<String>,
     /// Allowed HTTP methods (None means all)
-    pub methods: Option<HttpMethod>,
+    pub methods: Option<RadixHttpMethod>,
     /// Host patterns (None means all)
     pub hosts: Option<Vec<String>>,
     /// Remote address filters (CIDR notation)
@@ -159,7 +159,7 @@ pub struct Route {
 
 /// Match options for route matching (input only)
 #[derive(Debug, Clone, Default)]
-pub struct MatchOpts {
+pub struct RadixMatchOpts {
     /// HTTP method
     pub method: Option<String>,
     /// Host header
@@ -201,7 +201,7 @@ pub(crate) struct RouteOpts {
     /// Whether path contains parameters
     pub has_param: bool,
 
-    pub methods: HttpMethod,
+    pub methods: RadixHttpMethod,
     pub hosts: Option<Vec<HostPattern>>,
     pub vars: Option<Vec<Expr>>,
     pub filter_fn: Option<FilterFn>,
@@ -227,9 +227,9 @@ impl RouteOpts {
     }
 }
 
-impl std::fmt::Debug for Route {
+impl std::fmt::Debug for RadixNode {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        f.debug_struct("Route")
+        f.debug_struct("RadixNode")
             .field("id", &self.id)
             .field("paths", &self.paths)
             .field("methods", &self.methods)

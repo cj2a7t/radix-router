@@ -1,6 +1,6 @@
 /// Edge cases and boundary conditions testing
 /// This example tests various edge cases and boundary conditions to ensure router robustness
-use router_radix::{HttpMethod, MatchOpts, RadixRouter, Route};
+use router_radix::{RadixHttpMethod, RadixMatchOpts, RadixRouter, RadixNode};
 
 fn main() -> anyhow::Result<()> {
     println!("=== Edge Cases & Boundary Conditions Test ===\n");
@@ -9,10 +9,10 @@ fn main() -> anyhow::Result<()> {
     println!("Test 1: Empty and root paths");
     {
         let routes = vec![
-            Route {
+            RadixNode {
                 id: "root".to_string(),
                 paths: vec!["/".to_string()],
-                methods: Some(HttpMethod::GET),
+                methods: Some(RadixHttpMethod::GET),
                 hosts: None,
                 remote_addrs: None,
                 vars: None,
@@ -20,10 +20,10 @@ fn main() -> anyhow::Result<()> {
                 priority: 0,
                 metadata: serde_json::json!({"handler": "root"}),
             },
-            Route {
+            RadixNode {
                 id: "api".to_string(),
                 paths: vec!["/api".to_string()],
-                methods: Some(HttpMethod::GET),
+                methods: Some(RadixHttpMethod::GET),
                 hosts: None,
                 remote_addrs: None,
                 vars: None,
@@ -34,7 +34,7 @@ fn main() -> anyhow::Result<()> {
         ];
 
         let router = RadixRouter::new(routes)?;
-        let opts = MatchOpts {
+        let opts = RadixMatchOpts {
             method: Some("GET".to_string()),
             ..Default::default()
         };
@@ -53,7 +53,7 @@ fn main() -> anyhow::Result<()> {
     println!("Test 2: Paths with special characters");
     {
         let routes = vec![
-            Route {
+            RadixNode {
                 id: "special1".to_string(),
                 paths: vec!["/api/user-profile".to_string()],
                 methods: None,
@@ -64,7 +64,7 @@ fn main() -> anyhow::Result<()> {
                 priority: 0,
                 metadata: serde_json::json!({"handler": "user_profile"}),
             },
-            Route {
+            RadixNode {
                 id: "special2".to_string(),
                 paths: vec!["/api/user_data".to_string()],
                 methods: None,
@@ -75,7 +75,7 @@ fn main() -> anyhow::Result<()> {
                 priority: 0,
                 metadata: serde_json::json!({"handler": "user_data"}),
             },
-            Route {
+            RadixNode {
                 id: "special3".to_string(),
                 paths: vec!["/api/user.info".to_string()],
                 methods: None,
@@ -89,7 +89,7 @@ fn main() -> anyhow::Result<()> {
         ];
 
         let router = RadixRouter::new(routes)?;
-        let opts = MatchOpts::default();
+        let opts = RadixMatchOpts::default();
 
         assert!(router.match_route("/api/user-profile", &opts)?.is_some());
         println!("  ✓ Path with hyphen '-' matched");
@@ -107,7 +107,7 @@ fn main() -> anyhow::Result<()> {
     {
         let long_path =
             "/api/v1/users/profiles/details/personal/information/extended/metadata/attributes";
-        let routes = vec![Route {
+        let routes = vec![RadixNode {
             id: "long".to_string(),
             paths: vec![long_path.to_string()],
             methods: None,
@@ -120,7 +120,7 @@ fn main() -> anyhow::Result<()> {
         }];
 
         let router = RadixRouter::new(routes)?;
-        let opts = MatchOpts::default();
+        let opts = RadixMatchOpts::default();
 
         let result = router.match_route(long_path, &opts)?;
         assert!(result.is_some());
@@ -132,7 +132,7 @@ fn main() -> anyhow::Result<()> {
     println!("Test 4: Similar paths (prefix matching)");
     {
         let routes = vec![
-            Route {
+            RadixNode {
                 id: "1".to_string(),
                 paths: vec!["/api/user".to_string()],
                 methods: None,
@@ -143,7 +143,7 @@ fn main() -> anyhow::Result<()> {
                 priority: 0,
                 metadata: serde_json::json!({"handler": "user"}),
             },
-            Route {
+            RadixNode {
                 id: "2".to_string(),
                 paths: vec!["/api/users".to_string()],
                 methods: None,
@@ -154,7 +154,7 @@ fn main() -> anyhow::Result<()> {
                 priority: 0,
                 metadata: serde_json::json!({"handler": "users"}),
             },
-            Route {
+            RadixNode {
                 id: "3".to_string(),
                 paths: vec!["/api/user/:id".to_string()],
                 methods: None,
@@ -168,7 +168,7 @@ fn main() -> anyhow::Result<()> {
         ];
 
         let router = RadixRouter::new(routes)?;
-        let opts = MatchOpts::default();
+        let opts = RadixMatchOpts::default();
 
         let result = router.match_route("/api/user", &opts)?.unwrap();
         assert_eq!(result.metadata["handler"], "user");
@@ -188,7 +188,7 @@ fn main() -> anyhow::Result<()> {
     println!("Test 5: Multiple wildcard patterns");
     {
         let routes = vec![
-            Route {
+            RadixNode {
                 id: "wild1".to_string(),
                 paths: vec!["/files/*path".to_string()],
                 methods: None,
@@ -199,7 +199,7 @@ fn main() -> anyhow::Result<()> {
                 priority: 5,
                 metadata: serde_json::json!({"handler": "files"}),
             },
-            Route {
+            RadixNode {
                 id: "wild2".to_string(),
                 paths: vec!["/files/public/*".to_string()],
                 methods: None,
@@ -213,7 +213,7 @@ fn main() -> anyhow::Result<()> {
         ];
 
         let router = RadixRouter::new(routes)?;
-        let opts = MatchOpts::default();
+        let opts = RadixMatchOpts::default();
 
         // More specific route (with priority) should match first
         let result = router.match_route("/files/public/doc.pdf", &opts)?.unwrap();
@@ -225,7 +225,7 @@ fn main() -> anyhow::Result<()> {
     // Test 6: Parameters with special values
     println!("Test 6: Parameters with special values");
     {
-        let routes = vec![Route {
+        let routes = vec![RadixNode {
             id: "param".to_string(),
             paths: vec!["/api/resource/:id".to_string()],
             methods: None,
@@ -238,7 +238,7 @@ fn main() -> anyhow::Result<()> {
         }];
 
         let router = RadixRouter::new(routes)?;
-        let opts = MatchOpts::default();
+        let opts = RadixMatchOpts::default();
 
         // Test with UUID
         let result = router
@@ -267,7 +267,7 @@ fn main() -> anyhow::Result<()> {
     // Test 7: Trailing slashes
     println!("Test 7: Trailing slashes");
     {
-        let routes = vec![Route {
+        let routes = vec![RadixNode {
             id: "slash".to_string(),
             paths: vec!["/api/users".to_string()],
             methods: None,
@@ -280,7 +280,7 @@ fn main() -> anyhow::Result<()> {
         }];
 
         let router = RadixRouter::new(routes)?;
-        let opts = MatchOpts::default();
+        let opts = RadixMatchOpts::default();
 
         let result = router.match_route("/api/users", &opts)?;
         assert!(result.is_some());
@@ -301,7 +301,7 @@ fn main() -> anyhow::Result<()> {
     // Test 8: Case sensitivity
     println!("Test 8: Case sensitivity");
     {
-        let routes = vec![Route {
+        let routes = vec![RadixNode {
             id: "case".to_string(),
             paths: vec!["/API/Users".to_string()],
             methods: None,
@@ -314,7 +314,7 @@ fn main() -> anyhow::Result<()> {
         }];
 
         let router = RadixRouter::new(routes)?;
-        let opts = MatchOpts::default();
+        let opts = RadixMatchOpts::default();
 
         let result = router.match_route("/API/Users", &opts)?;
         assert!(result.is_some());
@@ -336,7 +336,7 @@ fn main() -> anyhow::Result<()> {
     println!("Test 9: Empty router");
     {
         let router = RadixRouter::new(vec![])?;
-        let opts = MatchOpts::default();
+        let opts = RadixMatchOpts::default();
 
         let result = router.match_route("/any/path", &opts)?;
         assert!(result.is_none());
@@ -347,7 +347,7 @@ fn main() -> anyhow::Result<()> {
     // Test 10: Host with port number
     println!("Test 10: Host with port number");
     {
-        let routes = vec![Route {
+        let routes = vec![RadixNode {
             id: "host_port".to_string(),
             paths: vec!["/api".to_string()],
             methods: None,
@@ -362,7 +362,7 @@ fn main() -> anyhow::Result<()> {
         let router = RadixRouter::new(routes)?;
 
         // Test without port
-        let opts = MatchOpts {
+        let opts = RadixMatchOpts {
             host: Some("example.com".to_string()),
             ..Default::default()
         };
@@ -370,7 +370,7 @@ fn main() -> anyhow::Result<()> {
         println!("  ✓ Host without port matched");
 
         // Test with port
-        let opts = MatchOpts {
+        let opts = RadixMatchOpts {
             host: Some("example.com:8080".to_string()),
             ..Default::default()
         };
@@ -389,15 +389,15 @@ fn main() -> anyhow::Result<()> {
     // Test 11: All HTTP methods
     println!("Test 11: All HTTP methods");
     {
-        let all_methods = HttpMethod::GET
-            | HttpMethod::POST
-            | HttpMethod::PUT
-            | HttpMethod::DELETE
-            | HttpMethod::PATCH
-            | HttpMethod::HEAD
-            | HttpMethod::OPTIONS;
+        let all_methods = RadixHttpMethod::GET
+            | RadixHttpMethod::POST
+            | RadixHttpMethod::PUT
+            | RadixHttpMethod::DELETE
+            | RadixHttpMethod::PATCH
+            | RadixHttpMethod::HEAD
+            | RadixHttpMethod::OPTIONS;
 
-        let routes = vec![Route {
+        let routes = vec![RadixNode {
             id: "all_methods".to_string(),
             paths: vec!["/api/resource".to_string()],
             methods: Some(all_methods),
@@ -413,7 +413,7 @@ fn main() -> anyhow::Result<()> {
 
         let methods = vec!["GET", "POST", "PUT", "DELETE", "PATCH", "HEAD", "OPTIONS"];
         for method in methods {
-            let opts = MatchOpts {
+            let opts = RadixMatchOpts {
                 method: Some(method.to_string()),
                 ..Default::default()
             };
@@ -426,7 +426,7 @@ fn main() -> anyhow::Result<()> {
     // Test 12: Nested parameters
     println!("Test 12: Nested parameters");
     {
-        let routes = vec![Route {
+        let routes = vec![RadixNode {
             id: "nested".to_string(),
             paths: vec!["/org/:org_id/team/:team_id/user/:user_id".to_string()],
             methods: None,
@@ -439,7 +439,7 @@ fn main() -> anyhow::Result<()> {
         }];
 
         let router = RadixRouter::new(routes)?;
-        let opts = MatchOpts::default();
+        let opts = RadixMatchOpts::default();
 
         let result = router
             .match_route("/org/acme/team/engineering/user/john", &opts)?

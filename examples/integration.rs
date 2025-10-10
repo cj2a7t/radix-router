@@ -1,6 +1,6 @@
 /// Integration test simulating real-world API gateway scenarios
 /// This example demonstrates how the router would be used in production
-use router_radix::{HttpMethod, MatchOpts, RadixRouter, Route};
+use router_radix::{RadixHttpMethod, RadixMatchOpts, RadixNode, RadixRouter};
 
 fn main() -> anyhow::Result<()> {
     println!("=== Real-World API Gateway Integration Test ===\n");
@@ -21,7 +21,7 @@ fn main() -> anyhow::Result<()> {
         ];
 
         for (path, method, host, desc) in requests {
-            let opts = MatchOpts {
+            let opts = RadixMatchOpts {
                 method: Some(method.to_string()),
                 host: host.map(|h: &str| h.to_string()),
                 ..Default::default()
@@ -49,7 +49,7 @@ fn main() -> anyhow::Result<()> {
         ];
 
         for (path, method, desc) in requests {
-            let opts = MatchOpts {
+            let opts = RadixMatchOpts {
                 method: Some(method.to_string()),
                 ..Default::default()
             };
@@ -81,7 +81,7 @@ fn main() -> anyhow::Result<()> {
         ];
 
         for (path, method, desc) in requests {
-            let opts = MatchOpts {
+            let opts = RadixMatchOpts {
                 method: Some(method.to_string()),
                 ..Default::default()
             };
@@ -128,7 +128,7 @@ fn main() -> anyhow::Result<()> {
         ];
 
         for (path, host, desc) in requests {
-            let opts = MatchOpts {
+            let opts = RadixMatchOpts {
                 method: Some("GET".to_string()),
                 host: host.map(|h| h.to_string()),
                 ..Default::default()
@@ -154,7 +154,7 @@ fn main() -> anyhow::Result<()> {
             "/downloads/files/report-2024.pdf",
         ];
 
-        let opts = MatchOpts {
+        let opts = RadixMatchOpts {
             method: Some("GET".to_string()),
             ..Default::default()
         };
@@ -201,7 +201,7 @@ fn main() -> anyhow::Result<()> {
         ];
 
         for (path, host, desc) in requests {
-            let opts = MatchOpts {
+            let opts = RadixMatchOpts {
                 method: Some("GET".to_string()),
                 host: host.map(|h| h.to_string()),
                 ..Default::default()
@@ -228,7 +228,7 @@ fn main() -> anyhow::Result<()> {
             "/ws/live/stream/abc123",
         ];
 
-        let opts = MatchOpts {
+        let opts = RadixMatchOpts {
             method: Some("GET".to_string()),
             ..Default::default()
         };
@@ -253,7 +253,7 @@ fn main() -> anyhow::Result<()> {
         let methods = vec!["GET", "POST", "PUT", "DELETE", "PATCH"];
 
         for method in methods {
-            let opts = MatchOpts {
+            let opts = RadixMatchOpts {
                 method: Some(method.to_string()),
                 ..Default::default()
             };
@@ -279,7 +279,7 @@ fn main() -> anyhow::Result<()> {
             "/api/v1/search/orders",
         ];
 
-        let opts = MatchOpts {
+        let opts = RadixMatchOpts {
             method: Some("GET".to_string()),
             ..Default::default()
         };
@@ -313,13 +313,13 @@ fn main() -> anyhow::Result<()> {
     Ok(())
 }
 
-fn create_api_gateway_routes() -> Vec<Route> {
+fn create_api_gateway_routes() -> Vec<RadixNode> {
     vec![
         // Health and status endpoints
-        Route {
+        RadixNode {
             id: "health".to_string(),
             paths: vec!["/api/v1/health".to_string()],
-            methods: Some(HttpMethod::GET),
+            methods: Some(RadixHttpMethod::GET),
             hosts: None,
             remote_addrs: None,
             vars: None,
@@ -330,10 +330,10 @@ fn create_api_gateway_routes() -> Vec<Route> {
                 "upstream": "internal:8080"
             }),
         },
-        Route {
+        RadixNode {
             id: "status".to_string(),
             paths: vec!["/api/v1/status".to_string()],
-            methods: Some(HttpMethod::GET),
+            methods: Some(RadixHttpMethod::GET),
             hosts: None,
             remote_addrs: None,
             vars: None,
@@ -344,10 +344,10 @@ fn create_api_gateway_routes() -> Vec<Route> {
                 "upstream": "internal:8080"
             }),
         },
-        Route {
+        RadixNode {
             id: "docs".to_string(),
             paths: vec!["/api/v1/docs".to_string()],
-            methods: Some(HttpMethod::GET),
+            methods: Some(RadixHttpMethod::GET),
             hosts: None,
             remote_addrs: None,
             vars: None,
@@ -359,10 +359,10 @@ fn create_api_gateway_routes() -> Vec<Route> {
             }),
         },
         // User service
-        Route {
+        RadixNode {
             id: "users_list".to_string(),
             paths: vec!["/api/v1/users".to_string()],
-            methods: Some(HttpMethod::GET | HttpMethod::POST),
+            methods: Some(RadixHttpMethod::GET | RadixHttpMethod::POST),
             hosts: None,
             remote_addrs: None,
             vars: None,
@@ -373,10 +373,10 @@ fn create_api_gateway_routes() -> Vec<Route> {
                 "upstream": "user-service:8001"
             }),
         },
-        Route {
+        RadixNode {
             id: "user_detail".to_string(),
             paths: vec!["/api/v1/user/:id".to_string()],
-            methods: Some(HttpMethod::GET | HttpMethod::PUT | HttpMethod::DELETE),
+            methods: Some(RadixHttpMethod::GET | RadixHttpMethod::PUT | RadixHttpMethod::DELETE),
             hosts: None,
             remote_addrs: None,
             vars: None,
@@ -387,10 +387,10 @@ fn create_api_gateway_routes() -> Vec<Route> {
                 "upstream": "user-service:8001"
             }),
         },
-        Route {
+        RadixNode {
             id: "user_profile".to_string(),
             paths: vec!["/api/v1/user/:id/profile".to_string()],
-            methods: Some(HttpMethod::GET | HttpMethod::PUT),
+            methods: Some(RadixHttpMethod::GET | RadixHttpMethod::PUT),
             hosts: None,
             remote_addrs: None,
             vars: None,
@@ -402,10 +402,10 @@ fn create_api_gateway_routes() -> Vec<Route> {
             }),
         },
         // Order service
-        Route {
+        RadixNode {
             id: "orders_list".to_string(),
             paths: vec!["/api/v1/orders".to_string()],
-            methods: Some(HttpMethod::GET | HttpMethod::POST),
+            methods: Some(RadixHttpMethod::GET | RadixHttpMethod::POST),
             hosts: None,
             remote_addrs: None,
             vars: None,
@@ -416,10 +416,10 @@ fn create_api_gateway_routes() -> Vec<Route> {
                 "upstream": "order-service:8002"
             }),
         },
-        Route {
+        RadixNode {
             id: "order_items".to_string(),
             paths: vec!["/api/v1/order/:order_id/items".to_string()],
-            methods: Some(HttpMethod::GET),
+            methods: Some(RadixHttpMethod::GET),
             hosts: None,
             remote_addrs: None,
             vars: None,
@@ -430,10 +430,10 @@ fn create_api_gateway_routes() -> Vec<Route> {
                 "upstream": "order-service:8002"
             }),
         },
-        Route {
+        RadixNode {
             id: "order_item_detail".to_string(),
             paths: vec!["/api/v1/order/:order_id/item/:item_id".to_string()],
-            methods: Some(HttpMethod::GET),
+            methods: Some(RadixHttpMethod::GET),
             hosts: None,
             remote_addrs: None,
             vars: None,
@@ -444,10 +444,10 @@ fn create_api_gateway_routes() -> Vec<Route> {
                 "upstream": "order-service:8002"
             }),
         },
-        Route {
+        RadixNode {
             id: "order_payment".to_string(),
             paths: vec!["/api/v1/order/:order_id/payment".to_string()],
-            methods: Some(HttpMethod::POST),
+            methods: Some(RadixHttpMethod::POST),
             hosts: None,
             remote_addrs: None,
             vars: None,
@@ -459,10 +459,10 @@ fn create_api_gateway_routes() -> Vec<Route> {
             }),
         },
         // Multi-tenant routing
-        Route {
+        RadixNode {
             id: "tenant_wildcard".to_string(),
             paths: vec!["/api/v1/dashboard".to_string()],
-            methods: Some(HttpMethod::GET),
+            methods: Some(RadixHttpMethod::GET),
             hosts: Some(vec!["*.api.example.com".to_string()]),
             remote_addrs: None,
             vars: None,
@@ -474,10 +474,10 @@ fn create_api_gateway_routes() -> Vec<Route> {
             }),
         },
         // Static files
-        Route {
+        RadixNode {
             id: "static_files".to_string(),
             paths: vec!["/static/*path".to_string()],
-            methods: Some(HttpMethod::GET),
+            methods: Some(RadixHttpMethod::GET),
             hosts: None,
             remote_addrs: None,
             vars: None,
@@ -488,10 +488,10 @@ fn create_api_gateway_routes() -> Vec<Route> {
                 "upstream": "cdn:8005"
             }),
         },
-        Route {
+        RadixNode {
             id: "downloads".to_string(),
             paths: vec!["/downloads/*path".to_string()],
-            methods: Some(HttpMethod::GET),
+            methods: Some(RadixHttpMethod::GET),
             hosts: None,
             remote_addrs: None,
             vars: None,
@@ -503,7 +503,7 @@ fn create_api_gateway_routes() -> Vec<Route> {
             }),
         },
         // Admin panel
-        Route {
+        RadixNode {
             id: "admin_panel".to_string(),
             paths: vec!["/admin/*path".to_string()],
             methods: None,
@@ -519,10 +519,10 @@ fn create_api_gateway_routes() -> Vec<Route> {
             }),
         },
         // WebSocket endpoints
-        Route {
+        RadixNode {
             id: "ws_chat".to_string(),
             paths: vec!["/ws/chat/*path".to_string()],
-            methods: Some(HttpMethod::GET),
+            methods: Some(RadixHttpMethod::GET),
             hosts: None,
             remote_addrs: None,
             vars: None,
@@ -534,10 +534,10 @@ fn create_api_gateway_routes() -> Vec<Route> {
                 "type": "websocket"
             }),
         },
-        Route {
+        RadixNode {
             id: "ws_notifications".to_string(),
             paths: vec!["/ws/notifications/*path".to_string()],
-            methods: Some(HttpMethod::GET),
+            methods: Some(RadixHttpMethod::GET),
             hosts: None,
             remote_addrs: None,
             vars: None,
@@ -549,10 +549,10 @@ fn create_api_gateway_routes() -> Vec<Route> {
                 "type": "websocket"
             }),
         },
-        Route {
+        RadixNode {
             id: "ws_live".to_string(),
             paths: vec!["/ws/live/*path".to_string()],
-            methods: Some(HttpMethod::GET),
+            methods: Some(RadixHttpMethod::GET),
             hosts: None,
             remote_addrs: None,
             vars: None,
@@ -565,10 +565,10 @@ fn create_api_gateway_routes() -> Vec<Route> {
             }),
         },
         // Method-based routing
-        Route {
+        RadixNode {
             id: "data_read".to_string(),
             paths: vec!["/api/v1/data".to_string()],
-            methods: Some(HttpMethod::GET),
+            methods: Some(RadixHttpMethod::GET),
             hosts: None,
             remote_addrs: None,
             vars: None,
@@ -580,10 +580,10 @@ fn create_api_gateway_routes() -> Vec<Route> {
                 "upstream": "data-read:8011"
             }),
         },
-        Route {
+        RadixNode {
             id: "data_write".to_string(),
             paths: vec!["/api/v1/data".to_string()],
-            methods: Some(HttpMethod::POST | HttpMethod::PUT | HttpMethod::PATCH),
+            methods: Some(RadixHttpMethod::POST | RadixHttpMethod::PUT | RadixHttpMethod::PATCH),
             hosts: None,
             remote_addrs: None,
             vars: None,
@@ -595,10 +595,10 @@ fn create_api_gateway_routes() -> Vec<Route> {
                 "upstream": "data-write:8012"
             }),
         },
-        Route {
+        RadixNode {
             id: "data_delete".to_string(),
             paths: vec!["/api/v1/data".to_string()],
-            methods: Some(HttpMethod::DELETE),
+            methods: Some(RadixHttpMethod::DELETE),
             hosts: None,
             remote_addrs: None,
             vars: None,
@@ -611,10 +611,10 @@ fn create_api_gateway_routes() -> Vec<Route> {
             }),
         },
         // Search endpoints
-        Route {
+        RadixNode {
             id: "search".to_string(),
             paths: vec!["/api/v1/search/:type".to_string()],
-            methods: Some(HttpMethod::GET),
+            methods: Some(RadixHttpMethod::GET),
             hosts: None,
             remote_addrs: None,
             vars: None,

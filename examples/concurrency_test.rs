@@ -1,6 +1,6 @@
 /// Concurrent performance test demonstrating the router's thread-safety and async-safety
 /// This example shows that multiple threads can query the router simultaneously without contention
-use router_radix::{HttpMethod, MatchOpts, RadixRouter, Route};
+use router_radix::{RadixHttpMethod, RadixMatchOpts, RadixRouter, RadixNode};
 use std::sync::Arc;
 use std::thread;
 use std::time::Instant;
@@ -11,10 +11,10 @@ fn main() -> anyhow::Result<()> {
     // Create a router with various route types
     let routes = vec![
         // Exact routes
-        Route {
+        RadixNode {
             id: "exact_1".to_string(),
             paths: vec!["/api/users".to_string()],
-            methods: Some(HttpMethod::GET),
+            methods: Some(RadixHttpMethod::GET),
             hosts: None,
             remote_addrs: None,
             vars: None,
@@ -22,10 +22,10 @@ fn main() -> anyhow::Result<()> {
             priority: 0,
             metadata: serde_json::json!({"type": "exact"}),
         },
-        Route {
+        RadixNode {
             id: "exact_2".to_string(),
             paths: vec!["/api/posts".to_string()],
-            methods: Some(HttpMethod::GET),
+            methods: Some(RadixHttpMethod::GET),
             hosts: None,
             remote_addrs: None,
             vars: None,
@@ -34,10 +34,10 @@ fn main() -> anyhow::Result<()> {
             metadata: serde_json::json!({"type": "exact"}),
         },
         // Parameter routes
-        Route {
+        RadixNode {
             id: "param_1".to_string(),
             paths: vec!["/api/user/:id".to_string()],
-            methods: Some(HttpMethod::GET),
+            methods: Some(RadixHttpMethod::GET),
             hosts: None,
             remote_addrs: None,
             vars: None,
@@ -45,10 +45,10 @@ fn main() -> anyhow::Result<()> {
             priority: 0,
             metadata: serde_json::json!({"type": "param"}),
         },
-        Route {
+        RadixNode {
             id: "param_2".to_string(),
             paths: vec!["/api/user/:uid/post/:pid".to_string()],
-            methods: Some(HttpMethod::GET),
+            methods: Some(RadixHttpMethod::GET),
             hosts: None,
             remote_addrs: None,
             vars: None,
@@ -57,7 +57,7 @@ fn main() -> anyhow::Result<()> {
             metadata: serde_json::json!({"type": "multi_param"}),
         },
         // Wildcard route
-        Route {
+        RadixNode {
             id: "wildcard".to_string(),
             paths: vec!["/files/*path".to_string()],
             methods: None,
@@ -87,7 +87,7 @@ fn main() -> anyhow::Result<()> {
     ];
 
     println!("=== Single-threaded Performance ===");
-    let opts = MatchOpts {
+    let opts = RadixMatchOpts {
         method: Some("GET".to_string()),
         ..Default::default()
     };
@@ -126,7 +126,7 @@ fn main() -> anyhow::Result<()> {
             let path_owned = path.to_string();
 
             let handle = thread::spawn(move || {
-                let opts = MatchOpts {
+                let opts = RadixMatchOpts {
                     method: Some("GET".to_string()),
                     ..Default::default()
                 };
