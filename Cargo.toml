@@ -1,6 +1,6 @@
 [package]
 name = "router-radix"
-version = "0.1.0"
+version = "0.2.0"
 edition = "2021"
 authors = ["cj2a7t"]
 description = "A high-performance radix tree based HTTP router for Rust"
