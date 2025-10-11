@@ -44,7 +44,8 @@
 //!     },
 //! ];
 //!
-//! let router = RadixRouter::new(routes)?;
+//! let mut router = RadixRouter::new()?;
+//! router.add_routes(routes)?;
 //!
 //! let opts = RadixMatchOpts {
 //!     method: Some("GET".to_string()),
@@ -94,7 +95,8 @@ mod tests {
             metadata: serde_json::json!({"handler": "get_users"}),
         }];
 
-        let router = RadixRouter::new(routes).unwrap();
+        let mut router = RadixRouter::new().unwrap();
+        router.add_routes(routes).unwrap();
 
         let opts = RadixMatchOpts {
             method: Some("GET".to_string()),
@@ -121,7 +123,8 @@ mod tests {
             metadata: serde_json::json!({"handler": "get_users"}),
         }];
 
-        let router = RadixRouter::new(routes).unwrap();
+        let mut router = RadixRouter::new().unwrap();
+        router.add_routes(routes).unwrap();
 
         let opts = RadixMatchOpts {
             method: Some("POST".to_string()),
@@ -146,7 +149,8 @@ mod tests {
             metadata: serde_json::json!({"handler": "user_post"}),
         }];
 
-        let router = RadixRouter::new(routes).unwrap();
+        let mut router = RadixRouter::new().unwrap();
+        router.add_routes(routes).unwrap();
 
         let opts = RadixMatchOpts::default();
 
@@ -172,7 +176,8 @@ mod tests {
             metadata: serde_json::json!({"handler": "serve_file"}),
         }];
 
-        let router = RadixRouter::new(routes).unwrap();
+        let mut router = RadixRouter::new().unwrap();
+        router.add_routes(routes).unwrap();
 
         let opts = RadixMatchOpts::default();
 
@@ -197,7 +202,8 @@ mod tests {
             metadata: serde_json::json!({"handler": "api"}),
         }];
 
-        let router = RadixRouter::new(routes).unwrap();
+        let mut router = RadixRouter::new().unwrap();
+        router.add_routes(routes).unwrap();
 
         let opts = RadixMatchOpts {
             host: Some("api.example.com".to_string()),
@@ -243,7 +249,8 @@ mod tests {
             },
         ];
 
-        let router = RadixRouter::new(routes).unwrap();
+        let mut router = RadixRouter::new().unwrap();
+        router.add_routes(routes).unwrap();
 
         let opts = RadixMatchOpts::default();
         let result = router.match_route("/api/users", &opts).unwrap();
@@ -267,7 +274,8 @@ mod tests {
             metadata: serde_json::json!({"handler": "users"}),
         }];
 
-        let router = RadixRouter::new(routes).unwrap();
+        let mut router = RadixRouter::new().unwrap();
+        router.add_routes(routes).unwrap();
 
         // Test GET
         let opts = RadixMatchOpts {
@@ -307,7 +315,8 @@ mod tests {
             metadata: serde_json::json!({"handler": "users_v2"}),
         }];
 
-        let router = RadixRouter::new(routes).unwrap();
+        let mut router = RadixRouter::new().unwrap();
+        router.add_routes(routes).unwrap();
 
         // Without version variable
         let opts = RadixMatchOpts::default();
@@ -351,7 +360,8 @@ mod tests {
             metadata: serde_json::json!({"handler": "users"}),
         }];
 
-        let router = RadixRouter::new(routes).unwrap();
+        let mut router = RadixRouter::new().unwrap();
+        router.add_routes(routes).unwrap();
 
         // Without variables
         let opts = RadixMatchOpts::default();
@@ -380,7 +390,7 @@ mod tests {
 
     #[test]
     fn test_add_and_delete_route() {
-        let mut router = RadixRouter::new(vec![]).unwrap();
+        let mut router = RadixRouter::new().unwrap();
 
         // Add route
         let route = RadixNode {

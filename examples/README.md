@@ -332,7 +332,8 @@ fn main() -> anyhow::Result<()> {
         // ... 你的路由定义
     ];
     
-    let router = RadixRouter::new(routes)?;
+    let mut router = RadixRouter::new()?;
+    router.add_routes(routes)?;
     
     // 测试场景
     println!("Test 1: Description");

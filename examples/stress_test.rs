@@ -42,7 +42,8 @@ fn main() -> anyhow::Result<()> {
         });
     }
 
-    let router = RadixRouter::new(routes)?;
+    let mut router = RadixRouter::new()?;
+    router.add_routes(routes)?;
     let creation_time = start.elapsed();
 
     println!(
@@ -140,7 +141,7 @@ fn main() -> anyhow::Result<()> {
 
     // Test 4: Memory usage test (route addition/deletion)
     println!("Test 4: Dynamic route management stress test");
-    let mut dynamic_router = RadixRouter::new(vec![])?;
+    let mut dynamic_router = RadixRouter::new()?;
 
     println!("  Adding 1000 routes dynamically...");
     let start = Instant::now();
@@ -223,7 +224,8 @@ fn main() -> anyhow::Result<()> {
             metadata: serde_json::json!({"type": "deep"}),
         }];
 
-        let router = RadixRouter::new(routes)?;
+        let mut router = RadixRouter::new()?;
+        router.add_routes(routes)?;
         let opts = RadixMatchOpts::default();
 
         let start = Instant::now();
@@ -256,7 +258,8 @@ fn main() -> anyhow::Result<()> {
             metadata: serde_json::json!({"type": "params"}),
         }];
 
-        let router = RadixRouter::new(routes)?;
+        let mut router = RadixRouter::new()?;
+        router.add_routes(routes)?;
         let opts = RadixMatchOpts::default();
 
         let start = Instant::now();
@@ -288,7 +291,8 @@ fn main() -> anyhow::Result<()> {
             metadata: serde_json::json!({"type": "long"}),
         }];
 
-        let router = RadixRouter::new(routes)?;
+        let mut router = RadixRouter::new()?;
+        router.add_routes(routes)?;
         let opts = RadixMatchOpts::default();
 
         let start = Instant::now();

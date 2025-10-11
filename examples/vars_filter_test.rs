@@ -26,7 +26,8 @@ fn main() -> anyhow::Result<()> {
             }),
         }];
 
-        let router = RadixRouter::new(routes)?;
+        let mut router = RadixRouter::new()?;
+        router.add_routes(routes)?;
 
         // Test with correct variable
         let mut vars = HashMap::new();
@@ -80,7 +81,8 @@ fn main() -> anyhow::Result<()> {
             }),
         }];
 
-        let router = RadixRouter::new(routes)?;
+        let mut router = RadixRouter::new()?;
+        router.add_routes(routes)?;
 
         // Test with mobile user agent
         let user_agents = vec![
@@ -142,7 +144,8 @@ fn main() -> anyhow::Result<()> {
             }),
         }];
 
-        let router = RadixRouter::new(routes)?;
+        let mut router = RadixRouter::new()?;
+        router.add_routes(routes)?;
 
         // All conditions met
         let mut vars = HashMap::new();
@@ -203,7 +206,8 @@ fn main() -> anyhow::Result<()> {
             }),
         }];
 
-        let router = RadixRouter::new(routes)?;
+        let mut router = RadixRouter::new()?;
+        router.add_routes(routes)?;
 
         let test_hours = vec![
             (8, false, "before business hours"),
@@ -268,7 +272,8 @@ fn main() -> anyhow::Result<()> {
             }),
         }];
 
-        let router = RadixRouter::new(routes)?;
+        let mut router = RadixRouter::new()?;
+        router.add_routes(routes)?;
 
         let test_counts = vec![0, 50, 99, 100, 150];
 
@@ -319,7 +324,8 @@ fn main() -> anyhow::Result<()> {
             }),
         }];
 
-        let router = RadixRouter::new(routes)?;
+        let mut router = RadixRouter::new()?;
+        router.add_routes(routes)?;
 
         let test_ips = vec![
             ("10.0.0.1", true, "internal"),
@@ -404,7 +410,8 @@ fn main() -> anyhow::Result<()> {
             },
         ];
 
-        let router = RadixRouter::new(routes)?;
+        let mut router = RadixRouter::new()?;
+        router.add_routes(routes)?;
 
         for user_id in 1..=10 {
             let mut vars = HashMap::new();
@@ -456,7 +463,8 @@ fn main() -> anyhow::Result<()> {
             }),
         }];
 
-        let router = RadixRouter::new(routes)?;
+        let mut router = RadixRouter::new()?;
+        router.add_routes(routes)?;
 
         // All checks pass
         let mut vars = HashMap::new();

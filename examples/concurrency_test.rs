@@ -70,7 +70,9 @@ fn main() -> anyhow::Result<()> {
         },
     ];
 
-    let router = Arc::new(RadixRouter::new(routes)?);
+    let mut router = RadixRouter::new()?;
+    router.add_routes(routes)?;
+    let router = Arc::new(router);
 
     println!("Router created with 5 routes");
     println!("- 2 exact match routes");

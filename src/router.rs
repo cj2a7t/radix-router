@@ -27,21 +27,22 @@ pub struct RadixRouter {
 }
 
 impl RadixRouter {
-    /// Create a new router with routes
-    pub fn new(routes: Vec<RadixNode>) -> Result<Self> {
-        let mut router = Self {
+    /// Create a new empty router
+    pub fn new() -> Result<Self> {
+        Ok(Self {
             tree: RwLock::new(RadixTreeRaw::new().context("Failed to create radix tree")?),
             match_data: HashMap::new(),
             match_data_index: 0,
             hash_path: HashMap::new(),
-        };
+        })
+    }
 
-        // Register all routes
+    /// Add multiple routes to the router
+    pub fn add_routes(&mut self, routes: Vec<RadixNode>) -> Result<()> {
         for route in routes {
-            router.add_route(route)?;
+            self.add_route(route)?;
         }
-
-        Ok(router)
+        Ok(())
     }
 
     /// Add a single route to the router

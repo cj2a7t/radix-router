@@ -63,7 +63,8 @@ fn main() -> anyhow::Result<()> {
             },
         ];
 
-        let router = RadixRouter::new(routes)?;
+        let mut router = RadixRouter::new()?;
+        router.add_routes(routes)?;
         let opts = RadixMatchOpts::default();
 
         benchmark("Exact match (hash lookup)", iterations, || {
@@ -87,7 +88,8 @@ fn main() -> anyhow::Result<()> {
             metadata: serde_json::json!({"type": "param"}),
         }];
 
-        let router = RadixRouter::new(routes)?;
+        let mut router = RadixRouter::new()?;
+        router.add_routes(routes)?;
         let opts = RadixMatchOpts::default();
 
         benchmark("Single parameter", iterations, || {
@@ -111,7 +113,8 @@ fn main() -> anyhow::Result<()> {
             metadata: serde_json::json!({"type": "multi_param"}),
         }];
 
-        let router = RadixRouter::new(routes)?;
+        let mut router = RadixRouter::new()?;
+        router.add_routes(routes)?;
         let opts = RadixMatchOpts::default();
 
         benchmark("Three parameters", iterations, || {
@@ -137,7 +140,8 @@ fn main() -> anyhow::Result<()> {
             metadata: serde_json::json!({"type": "wildcard"}),
         }];
 
-        let router = RadixRouter::new(routes)?;
+        let mut router = RadixRouter::new()?;
+        router.add_routes(routes)?;
         let opts = RadixMatchOpts::default();
 
         benchmark("Short wildcard path", iterations, || {
@@ -167,7 +171,8 @@ fn main() -> anyhow::Result<()> {
             metadata: serde_json::json!({"type": "method"}),
         }];
 
-        let router = RadixRouter::new(routes)?;
+        let mut router = RadixRouter::new()?;
+        router.add_routes(routes)?;
 
         let opts_get = RadixMatchOpts {
             method: Some("GET".to_string()),
@@ -204,7 +209,8 @@ fn main() -> anyhow::Result<()> {
             metadata: serde_json::json!({"type": "host"}),
         }];
 
-        let router = RadixRouter::new(routes)?;
+        let mut router = RadixRouter::new()?;
+        router.add_routes(routes)?;
 
         let opts = RadixMatchOpts {
             host: Some("api.example.com".to_string()),
@@ -232,7 +238,8 @@ fn main() -> anyhow::Result<()> {
             metadata: serde_json::json!({"type": "wildcard_host"}),
         }];
 
-        let router = RadixRouter::new(routes)?;
+        let mut router = RadixRouter::new()?;
+        router.add_routes(routes)?;
 
         let opts = RadixMatchOpts {
             host: Some("api.example.com".to_string()),
@@ -284,7 +291,8 @@ fn main() -> anyhow::Result<()> {
             },
         ];
 
-        let router = RadixRouter::new(routes)?;
+        let mut router = RadixRouter::new()?;
+        router.add_routes(routes)?;
 
         let opts = RadixMatchOpts {
             method: Some("GET".to_string()),
@@ -315,7 +323,8 @@ fn main() -> anyhow::Result<()> {
             });
         }
 
-        let router = RadixRouter::new(routes)?;
+        let mut router = RadixRouter::new()?;
+        router.add_routes(routes)?;
         let opts = RadixMatchOpts::default();
 
         benchmark("Match first route (100 total)", iterations, || {
@@ -375,7 +384,8 @@ fn main() -> anyhow::Result<()> {
             },
         ];
 
-        let router = RadixRouter::new(routes)?;
+        let mut router = RadixRouter::new()?;
+        router.add_routes(routes)?;
 
         let opts = RadixMatchOpts {
             method: Some("GET".to_string()),

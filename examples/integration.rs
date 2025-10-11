@@ -7,7 +7,8 @@ fn main() -> anyhow::Result<()> {
 
     // Simulate a microservices API gateway with multiple services
     let routes = create_api_gateway_routes();
-    let router = RadixRouter::new(routes)?;
+    let mut router = RadixRouter::new()?;
+    router.add_routes(routes)?;
 
     println!("Initialized API Gateway with routing rules\n");
 

@@ -70,9 +70,7 @@ Add to your `Cargo.toml`:
 
 ```toml
 [dependencies]
-# router_radix = "0.1.0"
-# anyhow = "1.0"
-# serde_json = "1.0"
+router_radix = "0.3.0"
 ```
 
 ### Hello Router
@@ -97,7 +95,8 @@ fn main() -> anyhow::Result<()> {
     ];
 
     // Initialize router
-    let router = RadixRouter::new(routes)?;
+    let mut router = RadixRouter::new()?;
+    router.add_routes(routes)?;
 
     // Match a request
     let opts = RadixMatchOpts {
@@ -137,7 +136,8 @@ let routes = vec![
     },
 ];
 
-let router = RadixRouter::new(routes)?;
+let mut router = RadixRouter::new()?;
+router.add_routes(routes)?;
 let result = router.match_route("/", &RadixMatchOpts::default())?;
 ```
 
@@ -155,7 +155,8 @@ let routes = vec![
     },
 ];
 
-let router = RadixRouter::new(routes)?;
+let mut router = RadixRouter::new()?;
+router.add_routes(routes)?;
 let result = router.match_route("/user/123/post/456", &RadixMatchOpts::default())?
     .expect("should match");
 
@@ -177,7 +178,8 @@ let routes = vec![
     },
 ];
 
-let router = RadixRouter::new(routes)?;
+let mut router = RadixRouter::new()?;
+router.add_routes(routes)?;
 let result = router.match_route("/files/css/main.css", &RadixMatchOpts::default())?
     .expect("should match");
 
@@ -199,7 +201,8 @@ let routes = vec![
     },
 ];
 
-let router = RadixRouter::new(routes)?;
+let mut router = RadixRouter::new()?;
+router.add_routes(routes)?;
 
 // GET - matches
 let opts = RadixMatchOpts {
@@ -232,7 +235,8 @@ let routes = vec![
     },
 ];
 
-let router = RadixRouter::new(routes)?;
+let mut router = RadixRouter::new()?;
+router.add_routes(routes)?;
 
 let opts = RadixMatchOpts {
     host: Some("api.example.com".to_string()),
@@ -263,7 +267,8 @@ let routes = vec![
     },
 ];
 
-let router = RadixRouter::new(routes)?;
+let mut router = RadixRouter::new()?;
+router.add_routes(routes)?;
 let result = router.match_route("/api/users", &RadixMatchOpts::default())?
     .expect("should match");
 
@@ -293,7 +298,8 @@ let routes = vec![
     },
 ];
 
-let router = RadixRouter::new(routes)?;
+let mut router = RadixRouter::new()?;
+router.add_routes(routes)?;
 
 // With version variable - matches
 let mut vars = HashMap::new();
@@ -329,7 +335,8 @@ let routes = vec![
     },
 ];
 
-let router = RadixRouter::new(routes)?;
+let mut router = RadixRouter::new()?;
+router.add_routes(routes)?;
 
 let mut vars = HashMap::new();
 vars.insert("env".to_string(), "production".to_string());
@@ -393,7 +400,9 @@ use std::thread;
 
 fn main() -> anyhow::Result<()> {
     let routes = vec![/* your routes */];
-    let router = Arc::new(RadixRouter::new(routes)?);
+    let mut router = RadixRouter::new()?;
+    router.add_routes(routes)?;
+    let router = Arc::new(router);
 
     // Share across threads
     let mut handles = vec![];
@@ -424,7 +433,7 @@ For dynamic route updates, wrap in an additional `RwLock`:
 ```rust
 use std::sync::{Arc, RwLock};
 
-let router = Arc::new(RwLock::new(RadixRouter::new(vec![])?));
+let router = Arc::new(RwLock::new(RadixRouter::new()?));
 
 // Write (exclusive)
 router.write().unwrap().add_route(new_route)?;

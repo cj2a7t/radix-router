@@ -76,7 +76,8 @@ fn main() -> anyhow::Result<()> {
     ];
 
     // Create router
-    let router = RadixRouter::new(routes)?;
+    let mut router = RadixRouter::new()?;
+    router.add_routes(routes)?;
 
     println!("=== Radix Router Examples ===\n");
 

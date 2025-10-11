@@ -33,7 +33,8 @@ fn main() -> anyhow::Result<()> {
             },
         ];
 
-        let router = RadixRouter::new(routes)?;
+        let mut router = RadixRouter::new()?;
+        router.add_routes(routes)?;
         let opts = RadixMatchOpts {
             method: Some("GET".to_string()),
             ..Default::default()
@@ -88,7 +89,8 @@ fn main() -> anyhow::Result<()> {
             },
         ];
 
-        let router = RadixRouter::new(routes)?;
+        let mut router = RadixRouter::new()?;
+        router.add_routes(routes)?;
         let opts = RadixMatchOpts::default();
 
         assert!(router.match_route("/api/user-profile", &opts)?.is_some());
@@ -119,7 +121,8 @@ fn main() -> anyhow::Result<()> {
             metadata: serde_json::json!({"handler": "long_path"}),
         }];
 
-        let router = RadixRouter::new(routes)?;
+        let mut router = RadixRouter::new()?;
+        router.add_routes(routes)?;
         let opts = RadixMatchOpts::default();
 
         let result = router.match_route(long_path, &opts)?;
@@ -167,7 +170,8 @@ fn main() -> anyhow::Result<()> {
             },
         ];
 
-        let router = RadixRouter::new(routes)?;
+        let mut router = RadixRouter::new()?;
+        router.add_routes(routes)?;
         let opts = RadixMatchOpts::default();
 
         let result = router.match_route("/api/user", &opts)?.unwrap();
@@ -212,7 +216,8 @@ fn main() -> anyhow::Result<()> {
             },
         ];
 
-        let router = RadixRouter::new(routes)?;
+        let mut router = RadixRouter::new()?;
+        router.add_routes(routes)?;
         let opts = RadixMatchOpts::default();
 
         // More specific route (with priority) should match first
@@ -237,7 +242,8 @@ fn main() -> anyhow::Result<()> {
             metadata: serde_json::json!({"handler": "resource"}),
         }];
 
-        let router = RadixRouter::new(routes)?;
+        let mut router = RadixRouter::new()?;
+        router.add_routes(routes)?;
         let opts = RadixMatchOpts::default();
 
         // Test with UUID
@@ -279,7 +285,8 @@ fn main() -> anyhow::Result<()> {
             metadata: serde_json::json!({"handler": "users"}),
         }];
 
-        let router = RadixRouter::new(routes)?;
+        let mut router = RadixRouter::new()?;
+        router.add_routes(routes)?;
         let opts = RadixMatchOpts::default();
 
         let result = router.match_route("/api/users", &opts)?;
@@ -313,7 +320,8 @@ fn main() -> anyhow::Result<()> {
             metadata: serde_json::json!({"handler": "users"}),
         }];
 
-        let router = RadixRouter::new(routes)?;
+        let mut router = RadixRouter::new()?;
+        router.add_routes(routes)?;
         let opts = RadixMatchOpts::default();
 
         let result = router.match_route("/API/Users", &opts)?;
@@ -335,7 +343,7 @@ fn main() -> anyhow::Result<()> {
     // Test 9: Empty router
     println!("Test 9: Empty router");
     {
-        let router = RadixRouter::new(vec![])?;
+        let router = RadixRouter::new()?;
         let opts = RadixMatchOpts::default();
 
         let result = router.match_route("/any/path", &opts)?;
@@ -359,7 +367,8 @@ fn main() -> anyhow::Result<()> {
             metadata: serde_json::json!({"handler": "api"}),
         }];
 
-        let router = RadixRouter::new(routes)?;
+        let mut router = RadixRouter::new()?;
+        router.add_routes(routes)?;
 
         // Test without port
         let opts = RadixMatchOpts {
@@ -409,7 +418,8 @@ fn main() -> anyhow::Result<()> {
             metadata: serde_json::json!({"handler": "resource"}),
         }];
 
-        let router = RadixRouter::new(routes)?;
+        let mut router = RadixRouter::new()?;
+        router.add_routes(routes)?;
 
         let methods = vec!["GET", "POST", "PUT", "DELETE", "PATCH", "HEAD", "OPTIONS"];
         for method in methods {
@@ -438,7 +448,8 @@ fn main() -> anyhow::Result<()> {
             metadata: serde_json::json!({"handler": "nested"}),
         }];
 
-        let router = RadixRouter::new(routes)?;
+        let mut router = RadixRouter::new()?;
+        router.add_routes(routes)?;
         let opts = RadixMatchOpts::default();
 
         let result = router
