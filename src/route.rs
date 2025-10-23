@@ -173,6 +173,8 @@ pub struct RadixMatchOpts {
 /// Match result containing metadata and extracted parameters
 #[derive(Debug, Clone)]
 pub struct MatchResult {
+    /// Route ID
+    pub id: String,
     /// Route metadata
     pub metadata: serde_json::Value,
     /// Matched path parameters and other extracted values

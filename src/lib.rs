@@ -106,6 +106,7 @@ mod tests {
         let result = router.match_route("/api/users", &opts).unwrap();
         assert!(result.is_some());
         let result = result.unwrap();
+        assert_eq!(result.id, "1");
         assert_eq!(result.metadata["handler"], "get_users");
     }
 
@@ -158,6 +159,7 @@ mod tests {
 
         assert!(result.is_some());
         let result = result.unwrap();
+        assert_eq!(result.id, "1");
         assert_eq!(result.matched.get("id").unwrap(), "123");
         assert_eq!(result.matched.get("pid").unwrap(), "456");
     }

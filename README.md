@@ -70,7 +70,7 @@ Add to your `Cargo.toml`:
 
 ```toml
 [dependencies]
-router_radix = "0.3.0"
+router_radix = "0.4.0"
 ```
 
 ### Hello Router
@@ -105,7 +105,8 @@ fn main() -> anyhow::Result<()> {
     };
 
     if let Some(result) = router.match_route("/api/users", &opts)? {
-        println!("✓ Matched! Handler: {}", result.metadata["handler"]);
+        println!("✓ Matched! Route ID: {}", result.id);
+        println!("  Handler: {}", result.metadata["handler"]);
         println!("  Params: {:?}", result.matched);
     }
 
@@ -160,6 +161,9 @@ router.add_routes(routes)?;
 let result = router.match_route("/user/123/post/456", &RadixMatchOpts::default())?
     .expect("should match");
 
+// Access route ID directly
+assert_eq!(result.id, "user_detail");
+// Extract path parameters
 assert_eq!(result.matched.get("id").unwrap(), "123");
 assert_eq!(result.matched.get("pid").unwrap(), "456");
 ```
@@ -272,6 +276,7 @@ router.add_routes(routes)?;
 let result = router.match_route("/api/users", &RadixMatchOpts::default())?
     .expect("should match");
 
+assert_eq!(result.id, "specific"); // Higher priority route ID
 assert_eq!(result.metadata["handler"], "users"); // Higher priority wins
 ```
 
@@ -351,6 +356,47 @@ assert!(router.match_route("/api/users", &opts)?.is_some());
 
 ---
 
+## 📋 MatchResult Structure
+
+The `MatchResult` struct contains all information about a matched route:
+
+```rust
+pub struct MatchResult {
+    pub id: String,                    // Route ID - NEW in v0.4.0!
+    pub metadata: serde_json::Value,   // Route metadata
+    pub matched: HashMap<String, String>, // Extracted parameters
+}
+```
+
+### Accessing Route Information
+
+```rust
+if let Some(result) = router.match_route("/api/user/123", &opts)? {
+    // Direct access to route ID (no need to extract from metadata)
+    println!("Matched route ID: {}", result.id);
+    
+    // Access route metadata
+    println!("Handler: {}", result.metadata["handler"]);
+    println!("Version: {}", result.metadata["version"]);
+    
+    // Access extracted path parameters
+    println!("User ID: {}", result.matched.get("id").unwrap());
+    
+    // Access system-provided information
+    println!("Full path: {}", result.matched.get("_path").unwrap());
+    println!("HTTP method: {}", result.matched.get("_method").unwrap());
+}
+```
+
+### Key Benefits of Direct ID Access
+
+- **Performance**: No need to parse metadata JSON
+- **Type Safety**: Direct string access instead of JSON value handling
+- **Simplicity**: Cleaner API for route identification
+- **Consistency**: ID is always available as a string
+
+---
+
 ## 🛡️ Error Handling
 
 The router uses `anyhow::Result` for proper error handling:
@@ -364,7 +410,7 @@ fn handle_request(router: &RadixRouter, path: &str) -> anyhow::Result<String> {
     
     match router.match_route(path, &opts)? {
         Some(result) => {
-            Ok(format!("Handler: {}", result.metadata["handler"]))
+            Ok(format!("Route ID: {}, Handler: {}", result.id, result.metadata["handler"]))
         }
         None => {
             Ok("404 Not Found".to_string())

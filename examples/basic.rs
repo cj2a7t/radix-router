@@ -93,7 +93,7 @@ fn main() -> anyhow::Result<()> {
         println!("   Method: GET");
 
         if let Some(result) = router.match_route("/api/users", &opts)? {
-            println!("   ✓ Matched!");
+            println!("   ✓ Matched! Route ID: {}", result.id);
             println!(
                 "   Metadata: {}",
                 serde_json::to_string_pretty(&result.metadata).unwrap()
@@ -117,7 +117,7 @@ fn main() -> anyhow::Result<()> {
         println!("   Method: GET");
 
         if let Some(result) = router.match_route("/api/user/12345", &opts)? {
-            println!("   ✓ Matched!");
+            println!("   ✓ Matched! Route ID: {}", result.id);
             println!(
                 "   Metadata: {}",
                 serde_json::to_string_pretty(&result.metadata).unwrap()
@@ -141,7 +141,7 @@ fn main() -> anyhow::Result<()> {
         println!("   Method: GET");
 
         if let Some(result) = router.match_route("/api/user/12345/posts", &opts)? {
-            println!("   ✓ Matched!");
+            println!("   ✓ Matched! Route ID: {}", result.id);
             println!(
                 "   Metadata: {}",
                 serde_json::to_string_pretty(&result.metadata).unwrap()
@@ -165,7 +165,7 @@ fn main() -> anyhow::Result<()> {
         println!("   Host: admin.example.com");
 
         if let Some(result) = router.match_route("/admin/dashboard/settings", &opts)? {
-            println!("   ✓ Matched!");
+            println!("   ✓ Matched! Route ID: {}", result.id);
             println!(
                 "   Metadata: {}",
                 serde_json::to_string_pretty(&result.metadata).unwrap()
@@ -189,7 +189,7 @@ fn main() -> anyhow::Result<()> {
         println!("   Host: v1.api.example.com");
 
         if let Some(result) = router.match_route("/api/health", &opts)? {
-            println!("   ✓ Matched!");
+            println!("   ✓ Matched! Route ID: {}", result.id);
             println!(
                 "   Metadata: {}",
                 serde_json::to_string_pretty(&result.metadata).unwrap()
@@ -213,7 +213,7 @@ fn main() -> anyhow::Result<()> {
         println!("   Method: POST (route only allows GET)");
 
         if let Some(result) = router.match_route("/api/users", &opts)? {
-            println!("   ✓ Matched!");
+            println!("   ✓ Matched! Route ID: {}", result.id);
             println!(
                 "   Metadata: {}",
                 serde_json::to_string_pretty(&result.metadata).unwrap()
@@ -236,7 +236,7 @@ fn main() -> anyhow::Result<()> {
         println!("   Method: PUT (route allows GET, PUT, DELETE)");
 
         if let Some(result) = router.match_route("/api/user/12345", &opts)? {
-            println!("   ✓ Matched!");
+            println!("   ✓ Matched! Route ID: {}", result.id);
             println!(
                 "   Metadata: {}",
                 serde_json::to_string_pretty(&result.metadata).unwrap()

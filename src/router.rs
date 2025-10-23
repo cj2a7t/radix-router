@@ -189,6 +189,7 @@ impl RadixRouter {
                 if self.match_route_opts(route, path, &normalized_opts, &mut matched) {
                     matched.insert("_path".to_string(), path.to_string());
                     return Ok(Some(MatchResult {
+                        id: route.id.clone(),
                         metadata: route.metadata.clone(),
                         matched,
                     }));
@@ -220,6 +221,7 @@ impl RadixRouter {
                     if self.match_route_opts(route, path, &normalized_opts, &mut matched) {
                         matched.insert("_path".to_string(), route.path_org.clone());
                         return Ok(Some(MatchResult {
+                            id: route.id.clone(),
                             metadata: route.metadata.clone(),
                             matched,
                         }));
